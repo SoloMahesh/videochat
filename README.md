@@ -34,7 +34,7 @@ Point a Stripe webhook endpoint at `https://<your-domain>/api/payments/webhook` 
 ### Before public launch — do not skip
 
 - Replace the placeholder legal copy in `src/app/terms/page.tsx` with reviewed Terms of Service.
-- `src/lib/moderation/classify.ts` runs a real skin-tone-ratio heuristic today (not a no-op), but it's a low-precision signal, not a trained model — replace or supplement it with a real classifier before real users are on this. See `docs/PRD.md` §6.
+- `src/lib/moderation/classify.ts` runs `nsfwjs`'s real trained MobileNetV2 model (self-hosted, no network calls) — nothing to do here, though no classifier is perfect; the manual report queue (`/admin`) is the backstop. See `docs/PRD.md` §6.
 - Set up the NCMEC CyberTipline reporting process referenced in `docs/FSD.md` §9.
 - Confirm an ad network will accept the app before wiring `src/components/AdSlot.tsx` to a real network.
 

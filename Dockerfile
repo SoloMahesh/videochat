@@ -4,7 +4,10 @@ ENV NODE_ENV=production
 
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev=false
+# tsx and typescript are devDependencies but server.ts runs through tsx at
+# runtime in production too (see package.json "start") — do not omit dev
+# deps here, the app won't boot without them.
+RUN npm install
 
 FROM deps AS build
 COPY . .
