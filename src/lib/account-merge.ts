@@ -26,6 +26,12 @@ export async function mergeGuestIntoUser(guestId: string, targetUserId: string) 
     await tx.chatSession.updateMany({ where: { userAId: guestId }, data: { userAId: targetUserId } });
     await tx.chatSession.updateMany({ where: { userBId: guestId }, data: { userBId: targetUserId } });
     await tx.coinTransaction.updateMany({ where: { userId: guestId }, data: { userId: targetUserId } });
+    await tx.referral.updateMany({ where: { referrerId: guestId }, data: { referrerId: targetUserId } });
+
+    const existingTargetReferee = await tx.referral.findUnique({ where: { refereeId: targetUserId } });
+    if (!existingTargetReferee) {
+      await tx.referral.updateMany({ where: { refereeId: guestId }, data: { refereeId: targetUserId } });
+    }
 
     const existingTargetSub = await tx.subscription.findUnique({ where: { userId: targetUserId } });
     if (!existingTargetSub) {

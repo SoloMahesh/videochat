@@ -1,10 +1,29 @@
 "use client";
 
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { AgeGate } from "@/components/AgeGate";
 import { useGuestSession } from "@/hooks/useGuestSession";
+import { getDeviceId } from "@/lib/device";
+
+function ReferralCapture() {
+  const params = useSearchParams();
+
+  useEffect(() => {
+    const ref = params.get("ref");
+    if (!ref) return;
+    fetch("/api/referral/claim", {
+      method: "POST",
+      headers: { "x-device-id": getDeviceId(), "content-type": "application/json" },
+      body: JSON.stringify({ code: ref }),
+    }).catch(() => {});
+  }, [params]);
+
+  return null;
+}
 
 const HIGHLIGHTS = [
   { k: "01", title: "One tap, no signup", body: "Guest mode is the whole product. Tap Start, you're talking." },
@@ -19,6 +38,9 @@ export default function LandingPage() {
   return (
     <>
       <AmbientBackground />
+      <Suspense fallback={null}>
+        <ReferralCapture />
+      </Suspense>
       {state.status === "ready" && !state.session.ageConfirmed && <AgeGate onConfirm={confirmAge} />}
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
@@ -32,6 +54,9 @@ export default function LandingPage() {
           </Link>
           <Link href="/coins" className="hover:text-ink">
             Coins
+          </Link>
+          <Link href="/invite" className="hover:text-ink">
+            Invite
           </Link>
           {!authSession && (
             <Link href="/sign-in" className="hover:text-ink">

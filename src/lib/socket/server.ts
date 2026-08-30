@@ -4,6 +4,7 @@ import { verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { activeBan, escalateAndBan } from "@/lib/ban";
 import { hashIp } from "@/lib/fingerprint";
 import { claimMatch, enqueue, removeBySocket, type SessionMode } from "@/lib/matchmaking/queue";
+import { maybeRewardReferral } from "@/lib/referral";
 import { randomUUID } from "node:crypto";
 
 type Peer = { socketId: string; userId: string };
@@ -117,6 +118,9 @@ async function endSession(io: Server, sessionId: string, reasonA: string, reason
 
   io.to(session.a.socketId).emit("session_ended", { sessionId, reason: reasonA });
   io.to(session.b.socketId).emit("session_ended", { sessionId, reason: reasonB });
+
+  void maybeRewardReferral(session.a.userId, sessionId);
+  void maybeRewardReferral(session.b.userId, sessionId);
 
   if (REQUEUEABLE_REASONS.has(reasonA) && REQUEUEABLE_REASONS.has(reasonB)) {
     const timeout = setTimeout(() => rematchWindows.delete(sessionId), REMATCH_WINDOW_MS);
