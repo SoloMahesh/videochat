@@ -7,6 +7,7 @@ export type ChatMode = "VIDEO" | "TEXT";
 export type ReportReason = "NUDITY" | "HARASSMENT" | "MINOR_SUSPECTED" | "SPAM" | "OTHER";
 export type CallStatus = "idle" | "searching" | "connected" | "banned" | "error";
 export type ChatMessage = { from: "me" | "stranger"; text: string };
+export type ShareCard = { sharedTags: string[]; mode: ChatMode; durationSeconds: number; vibe: string };
 
 function buildIceServers(): RTCIceServer[] {
   const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
@@ -29,6 +30,8 @@ export function useWebRTC() {
   const [sharedTags, setSharedTags] = useState<string[]>([]);
   const [warning, setWarning] = useState<string | null>(null);
   const [rematch, setRematch] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
+  const [cardOffer, setCardOffer] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
+  const [shareCard, setShareCard] = useState<ShareCard | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,9 +98,14 @@ export function useWebRTC() {
       clearRematchTimer();
       if (offerRematch && endedSessionId) {
         setRematch({ sessionId: endedSessionId, requestedByMe: false });
-        rematchTimeoutRef.current = setTimeout(() => setRematch(null), REMATCH_WINDOW_MS);
+        setCardOffer({ sessionId: endedSessionId, requestedByMe: false });
+        rematchTimeoutRef.current = setTimeout(() => {
+          setRematch(null);
+          setCardOffer(null);
+        }, REMATCH_WINDOW_MS);
       } else {
         setRematch(null);
+        setCardOffer(null);
       }
       socketRef.current.emit("join_queue", {
         mode: lastOptsRef.current.mode,
@@ -146,6 +154,7 @@ export function useWebRTC() {
     stopLocalMedia();
     clearRematchTimer();
     setRematch(null);
+    setCardOffer(null);
     setStatus("idle");
   }, [teardownPeer, stopLocalMedia, clearRematchTimer]);
 
@@ -156,6 +165,16 @@ export function useWebRTC() {
       return { ...prev, requestedByMe: true };
     });
   }, []);
+
+  const requestShareCard = useCallback(() => {
+    setCardOffer((prev) => {
+      if (!prev) return prev;
+      socketRef.current.emit("share_card", { sessionId: prev.sessionId });
+      return { ...prev, requestedByMe: true };
+    });
+  }, []);
+
+  const dismissShareCard = useCallback(() => setShareCard(null), []);
 
   const sendMessage = useCallback((text: string) => {
     if (!sessionIdRef.current || !text.trim()) return;
@@ -172,6 +191,7 @@ export function useWebRTC() {
       setStatus("connected");
       clearRematchTimer();
       setRematch(null);
+      setCardOffer(null);
 
       const pc = createPeerConnection(data.sessionId, lastOptsRef.current.mode);
       if (data.isInitiator) {
@@ -221,6 +241,11 @@ export function useWebRTC() {
       if (data.severity === "warn") setWarning("Keep it appropriate — this stream was flagged.");
     }
 
+    function onShareCardReady(data: { sessionId: string; card: ShareCard }) {
+      setCardOffer(null);
+      setShareCard(data.card);
+    }
+
     function onConnectError() {
       setStatus("error");
     }
@@ -230,6 +255,7 @@ export function useWebRTC() {
     socket.on("chat_message", onChatMessage);
     socket.on("session_ended", onSessionEnded);
     socket.on("moderation_flag", onModerationFlag);
+    socket.on("share_card_ready", onShareCardReady);
     socket.on("connect_error", onConnectError);
 
     return () => {
@@ -238,6 +264,7 @@ export function useWebRTC() {
       socket.off("chat_message", onChatMessage);
       socket.off("session_ended", onSessionEnded);
       socket.off("moderation_flag", onModerationFlag);
+      socket.off("share_card_ready", onShareCardReady);
       socket.off("connect_error", onConnectError);
     };
   }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia, clearRematchTimer]);
@@ -258,6 +285,10 @@ export function useWebRTC() {
     sendMessage,
     rematch,
     requestRematch,
+    cardOffer,
+    shareCard,
+    requestShareCard,
+    dismissShareCard,
     sessionId: sessionIdRef.current,
   };
 }

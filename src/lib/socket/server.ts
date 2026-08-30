@@ -15,25 +15,39 @@ type ActiveSession = {
   a: Peer;
   b: Peer;
   interestTagsMatched: string[];
+  startedAt: number;
 };
 
-type RematchWindow = {
+/** Opened by endSession whenever a session ends by skip/disconnect (PRD
+ * §5.1/§5.5) — the one 30s window where either ex-partner can request a
+ * Rematch, or both can opt into a shareable stat card. Report/ban endings
+ * never open this window. */
+type PostSessionWindow = {
   aUserId: string;
   bUserId: string;
   mode: SessionMode;
-  aWants: boolean;
-  bWants: boolean;
+  sharedTags: string[];
+  durationMs: number;
+  aWantsRematch: boolean;
+  bWantsRematch: boolean;
+  aWantsCard: boolean;
+  bWantsCard: boolean;
   timeout: ReturnType<typeof setTimeout>;
 };
 
 const sessions = new Map<string, ActiveSession>();
 const sessionBySocket = new Map<string, string>();
 const socketsByUser = new Map<string, Socket>();
-const rematchWindows = new Map<string, RematchWindow>();
+const postSessionWindows = new Map<string, PostSessionWindow>();
 let ioRef: Server | null = null;
 
-const REMATCH_WINDOW_MS = 30_000;
+const POST_SESSION_WINDOW_MS = 30_000;
 const REQUEUEABLE_REASONS = new Set(["skip", "disconnect"]);
+
+function pickVibeEmoji(): string {
+  const vibes = ["✨", "🌊", "🔥", "🎲", "🪩", "🌀", "🎈", "🌸"];
+  return vibes[Math.floor(Math.random() * vibes.length)] ?? "✨";
+}
 
 function parseCookies(header?: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -75,7 +89,7 @@ async function createMatchedSession(
   sharedTags: string[],
 ): Promise<string> {
   const sessionId = randomUUID();
-  sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags });
+  sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags, startedAt: Date.now() });
   sessionBySocket.set(a.socketId, sessionId);
   sessionBySocket.set(b.socketId, sessionId);
 
@@ -123,13 +137,17 @@ async function endSession(io: Server, sessionId: string, reasonA: string, reason
   void maybeRewardReferral(session.b.userId, sessionId);
 
   if (REQUEUEABLE_REASONS.has(reasonA) && REQUEUEABLE_REASONS.has(reasonB)) {
-    const timeout = setTimeout(() => rematchWindows.delete(sessionId), REMATCH_WINDOW_MS);
-    rematchWindows.set(sessionId, {
+    const timeout = setTimeout(() => postSessionWindows.delete(sessionId), POST_SESSION_WINDOW_MS);
+    postSessionWindows.set(sessionId, {
       aUserId: session.a.userId,
       bUserId: session.b.userId,
       mode: session.mode,
-      aWants: false,
-      bWants: false,
+      sharedTags: session.interestTagsMatched,
+      durationMs: Date.now() - session.startedAt,
+      aWantsRematch: false,
+      bWantsRematch: false,
+      aWantsCard: false,
+      bWantsCard: false,
       timeout,
     });
   }
@@ -195,17 +213,39 @@ export function registerSocketServer(io: Server) {
     socket.on("leave_queue", () => removeBySocket(socket.id));
 
     socket.on("rematch", (payload: { sessionId: string }) => {
-      const win = rematchWindows.get(payload.sessionId);
+      const win = postSessionWindows.get(payload.sessionId);
       if (!win) return;
 
-      if (userId === win.aUserId) win.aWants = true;
-      else if (userId === win.bUserId) win.bWants = true;
+      if (userId === win.aUserId) win.aWantsRematch = true;
+      else if (userId === win.bUserId) win.bWantsRematch = true;
       else return;
 
-      if (win.aWants && win.bWants) {
+      if (win.aWantsRematch && win.bWantsRematch) {
         clearTimeout(win.timeout);
-        rematchWindows.delete(payload.sessionId);
+        postSessionWindows.delete(payload.sessionId);
         void tryRematch(io, win.aUserId, win.bUserId, win.mode);
+      }
+    });
+
+    socket.on("share_card", (payload: { sessionId: string }) => {
+      const win = postSessionWindows.get(payload.sessionId);
+      if (!win) return;
+
+      if (userId === win.aUserId) win.aWantsCard = true;
+      else if (userId === win.bUserId) win.bWantsCard = true;
+      else return;
+
+      if (win.aWantsCard && win.bWantsCard) {
+        const card = {
+          sharedTags: win.sharedTags,
+          mode: win.mode,
+          durationSeconds: Math.max(1, Math.round(win.durationMs / 1000)),
+          vibe: pickVibeEmoji(),
+        };
+        const aSocket = socketsByUser.get(win.aUserId);
+        const bSocket = socketsByUser.get(win.bUserId);
+        if (aSocket) io.to(aSocket.id).emit("share_card_ready", { sessionId: payload.sessionId, card });
+        if (bSocket) io.to(bSocket.id).emit("share_card_ready", { sessionId: payload.sessionId, card });
       }
     });
 

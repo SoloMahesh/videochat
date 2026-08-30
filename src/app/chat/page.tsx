@@ -108,6 +108,15 @@ export default function ChatPage() {
                 {rtc.rematch.requestedByMe ? "Waiting for them to bounce back too…" : "Bounce back to that last person?"}
               </button>
             )}
+            {rtc.cardOffer && (
+              <button
+                onClick={rtc.requestShareCard}
+                disabled={rtc.cardOffer.requestedByMe}
+                className="mt-2 w-full rounded-full border border-line px-5 py-2 text-sm font-medium text-ink-muted transition hover:text-ink disabled:opacity-60"
+              >
+                {rtc.cardOffer.requestedByMe ? "Waiting for them to agree…" : "Get a shareable card of that chat?"}
+              </button>
+            )}
             <button onClick={rtc.stop} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
               Cancel
             </button>
@@ -238,6 +247,27 @@ export default function ChatPage() {
             <button onClick={() => setShowReport(false)} className="mt-4 text-sm text-ink-muted hover:text-ink">
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {rtc.shareCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper/90 px-4 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm overflow-hidden rounded-xl2 animate-fade-in">
+            <div className="bg-gradient-to-br from-accent to-accent2 p-8 text-center text-white">
+              <span className="text-5xl">{rtc.shareCard.vibe}</span>
+              <p className="mt-3 font-display text-xl font-bold">Bounced for {rtc.shareCard.durationSeconds}s</p>
+              {rtc.shareCard.sharedTags.length > 0 && (
+                <p className="mt-2 text-sm opacity-90">shared interest: {rtc.shareCard.sharedTags.join(", ")}</p>
+              )}
+              <p className="mt-1 text-xs opacity-75">{rtc.shareCard.mode === "VIDEO" ? "video" : "text"} chat on Bounce</p>
+            </div>
+            <div className="p-4 text-center">
+              <p className="text-xs text-ink-muted">Screenshot this to share — no faces, no names, just the moment.</p>
+              <button onClick={rtc.dismissShareCard} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
