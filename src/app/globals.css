@@ -19,3 +19,32 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 }
+
+.legal-content h2 {
+  @apply mt-4 font-display text-lg font-bold text-ink;
+}
+.legal-content h3 {
+  @apply mt-2 font-display text-base font-semibold text-ink;
+}
+.legal-content p {
+  @apply text-sm leading-relaxed text-ink-muted;
+}
+.legal-content ul,
+.legal-content ol {
+  @apply flex flex-col gap-2 pl-5 text-sm leading-relaxed text-ink-muted;
+}
+.legal-content ul {
+  @apply list-disc;
+}
+.legal-content ol {
+  @apply list-decimal;
+}
+.legal-content strong {
+  @apply font-semibold text-ink;
+}
+.legal-content a {
+  @apply text-accent-ink underline underline-offset-2;
+}
+.legal-content code {
+  @apply font-mono text-xs text-ink;
+}

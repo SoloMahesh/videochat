@@ -26,8 +26,11 @@ export function AgeGate({ onConfirm }: { onConfirm: () => void }) {
             I&rsquo;m 18 or older and I agree to the{" "}
             <a href="/terms" className="text-accent-ink underline underline-offset-2">
               Terms
-            </a>{" "}
-            and{" "}
+            </a>
+            , <a href="/privacy" className="text-accent-ink underline underline-offset-2">
+              Privacy Policy
+            </a>
+            , and{" "}
             <a href="/community-guidelines" className="text-accent-ink underline underline-offset-2">
               Community Guidelines
             </a>

@@ -115,6 +115,10 @@ export default function LandingPage() {
 
       <footer className="mx-auto max-w-5xl px-6 pb-10 font-mono text-xs text-ink-muted">
         18+ only · <Link href="/terms" className="underline underline-offset-2">Terms</Link> ·{" "}
+        <Link href="/privacy" className="underline underline-offset-2">
+          Privacy
+        </Link>{" "}
+        ·{" "}
         <Link href="/community-guidelines" className="underline underline-offset-2">
           Community Guidelines
         </Link>
