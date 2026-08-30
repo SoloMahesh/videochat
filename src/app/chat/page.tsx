@@ -26,8 +26,30 @@ export default function ChatPage() {
   const [desiredGender, setDesiredGender] = useState<GenderFilter>("ANY");
   const [draft, setDraft] = useState("");
   const [showReport, setShowReport] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useModerationScan({ active: rtc.status === "connected" && mode === "VIDEO", videoRef: rtc.localVideoRef });
+
+  async function shareTheCard() {
+    if (!rtc.shareCard) return;
+    const text = `${rtc.shareCard.vibe} Bounced for ${rtc.shareCard.durationSeconds}s on Bounce${
+      rtc.shareCard.sharedTags.length > 0 ? ` — shared interest: ${rtc.shareCard.sharedTags.join(", ")}` : ""
+    }`;
+    const url = typeof window !== "undefined" ? window.location.origin : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ text, url });
+        return;
+      } catch {
+        // user cancelled the native share sheet — fall through to clipboard
+      }
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  }
 
   useEffect(() => {
     if (state.status === "ready" && state.session.defaultInterestTags.length > 0 && tagsInput === "") {
@@ -355,9 +377,14 @@ export default function ChatPage() {
             </div>
             <div className="p-4 text-center">
               <p className="text-xs text-ink-muted">Screenshot this to share — no faces, no names, just the moment.</p>
-              <button onClick={rtc.dismissShareCard} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
-                Close
-              </button>
+              <div className="mt-3 flex justify-center gap-2">
+                <button onClick={shareTheCard} className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white">
+                  {shareCopied ? "Copied!" : "Share"}
+                </button>
+                <button onClick={rtc.dismissShareCard} className="rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
