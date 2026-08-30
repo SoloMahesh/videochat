@@ -16,10 +16,23 @@ type ActiveSession = {
   interestTagsMatched: string[];
 };
 
+type RematchWindow = {
+  aUserId: string;
+  bUserId: string;
+  mode: SessionMode;
+  aWants: boolean;
+  bWants: boolean;
+  timeout: ReturnType<typeof setTimeout>;
+};
+
 const sessions = new Map<string, ActiveSession>();
 const sessionBySocket = new Map<string, string>();
 const socketsByUser = new Map<string, Socket>();
+const rematchWindows = new Map<string, RematchWindow>();
 let ioRef: Server | null = null;
+
+const REMATCH_WINDOW_MS = 30_000;
+const REQUEUEABLE_REASONS = new Set(["skip", "disconnect"]);
 
 function parseCookies(header?: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -53,6 +66,42 @@ export async function forceEndSessionForUser(userId: string, reason: string) {
   await endSession(ioRef, sessionId, reason);
 }
 
+async function createMatchedSession(
+  io: Server,
+  a: Peer,
+  b: Peer,
+  mode: SessionMode,
+  sharedTags: string[],
+): Promise<string> {
+  const sessionId = randomUUID();
+  sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags });
+  sessionBySocket.set(a.socketId, sessionId);
+  sessionBySocket.set(b.socketId, sessionId);
+
+  await prisma.chatSession.create({
+    data: { id: sessionId, userAId: a.userId, userBId: b.userId, mode, interestTagsMatched: sharedTags },
+  });
+
+  io.to(a.socketId).emit("matched", { sessionId, isInitiator: true, sharedTags });
+  io.to(b.socketId).emit("matched", { sessionId, isInitiator: false, sharedTags });
+  return sessionId;
+}
+
+/** If both ex-partners tap Rematch within the window opened by
+ * endSession's `skip`/`disconnect` case (PRD §5.1), reconnect them
+ * directly — unless either has since moved on to someone else, in which
+ * case this quietly does nothing rather than interrupting a live call. */
+async function tryRematch(io: Server, aUserId: string, bUserId: string, mode: SessionMode) {
+  const aSocket = socketsByUser.get(aUserId);
+  const bSocket = socketsByUser.get(bUserId);
+  if (!aSocket || !bSocket) return;
+  if (sessionBySocket.has(aSocket.id) || sessionBySocket.has(bSocket.id)) return;
+
+  removeBySocket(aSocket.id);
+  removeBySocket(bSocket.id);
+  await createMatchedSession(io, { socketId: aSocket.id, userId: aUserId }, { socketId: bSocket.id, userId: bUserId }, mode, []);
+}
+
 async function endSession(io: Server, sessionId: string, reasonA: string, reasonB: string = reasonA) {
   const session = sessions.get(sessionId);
   if (!session) return;
@@ -68,6 +117,18 @@ async function endSession(io: Server, sessionId: string, reasonA: string, reason
 
   io.to(session.a.socketId).emit("session_ended", { sessionId, reason: reasonA });
   io.to(session.b.socketId).emit("session_ended", { sessionId, reason: reasonB });
+
+  if (REQUEUEABLE_REASONS.has(reasonA) && REQUEUEABLE_REASONS.has(reasonB)) {
+    const timeout = setTimeout(() => rematchWindows.delete(sessionId), REMATCH_WINDOW_MS);
+    rematchWindows.set(sessionId, {
+      aUserId: session.a.userId,
+      bUserId: session.b.userId,
+      mode: session.mode,
+      aWants: false,
+      bWants: false,
+      timeout,
+    });
+  }
 }
 
 export function registerSocketServer(io: Server) {
@@ -121,30 +182,28 @@ export function registerSocketServer(io: Server) {
         }
 
         const sharedTags = interestTags.filter((t) => candidate.interestTags.includes(t));
-        const sessionId = randomUUID();
         const a: Peer = { socketId: candidate.socketId, userId: candidate.userId };
         const b: Peer = { socketId: socket.id, userId };
-
-        sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags });
-        sessionBySocket.set(a.socketId, sessionId);
-        sessionBySocket.set(b.socketId, sessionId);
-
-        await prisma.chatSession.create({
-          data: {
-            id: sessionId,
-            userAId: a.userId,
-            userBId: b.userId,
-            mode,
-            interestTagsMatched: sharedTags,
-          },
-        });
-
-        io.to(a.socketId).emit("matched", { sessionId, isInitiator: true, sharedTags });
-        io.to(b.socketId).emit("matched", { sessionId, isInitiator: false, sharedTags });
+        await createMatchedSession(io, a, b, mode, sharedTags);
       },
     );
 
     socket.on("leave_queue", () => removeBySocket(socket.id));
+
+    socket.on("rematch", (payload: { sessionId: string }) => {
+      const win = rematchWindows.get(payload.sessionId);
+      if (!win) return;
+
+      if (userId === win.aUserId) win.aWants = true;
+      else if (userId === win.bUserId) win.bWants = true;
+      else return;
+
+      if (win.aWants && win.bWants) {
+        clearTimeout(win.timeout);
+        rematchWindows.delete(payload.sessionId);
+        void tryRematch(io, win.aUserId, win.bUserId, win.mode);
+      }
+    });
 
     socket.on("signal", (payload: { sessionId: string; type: string; payload: unknown }) => {
       const session = sessions.get(payload.sessionId);

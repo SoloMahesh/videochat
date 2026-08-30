@@ -21,11 +21,14 @@ function buildIceServers(): RTCIceServer[] {
   return servers;
 }
 
+const REMATCH_WINDOW_MS = 30_000;
+
 export function useWebRTC() {
   const [status, setStatus] = useState<CallStatus>("idle");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sharedTags, setSharedTags] = useState<string[]>([]);
   const [warning, setWarning] = useState<string | null>(null);
+  const [rematch, setRematch] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -33,6 +36,7 @@ export function useWebRTC() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const lastOptsRef = useRef<{ mode: ChatMode; interestTags: string[] }>({ mode: "VIDEO", interestTags: [] });
+  const rematchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const socketRef = useRef(getSocket());
 
@@ -77,16 +81,31 @@ export function useWebRTC() {
     return pc;
   }, []);
 
-  const requeue = useCallback(() => {
-    teardownPeer();
-    setMessages([]);
-    setWarning(null);
-    setStatus("searching");
-    socketRef.current.emit("join_queue", {
-      mode: lastOptsRef.current.mode,
-      interestTags: lastOptsRef.current.interestTags,
-    });
-  }, [teardownPeer]);
+  const clearRematchTimer = useCallback(() => {
+    if (rematchTimeoutRef.current) clearTimeout(rematchTimeoutRef.current);
+    rematchTimeoutRef.current = null;
+  }, []);
+
+  const requeue = useCallback(
+    (endedSessionId: string | null, offerRematch: boolean) => {
+      teardownPeer();
+      setMessages([]);
+      setWarning(null);
+      setStatus("searching");
+      clearRematchTimer();
+      if (offerRematch && endedSessionId) {
+        setRematch({ sessionId: endedSessionId, requestedByMe: false });
+        rematchTimeoutRef.current = setTimeout(() => setRematch(null), REMATCH_WINDOW_MS);
+      } else {
+        setRematch(null);
+      }
+      socketRef.current.emit("join_queue", {
+        mode: lastOptsRef.current.mode,
+        interestTags: lastOptsRef.current.interestTags,
+      });
+    },
+    [teardownPeer, clearRematchTimer],
+  );
 
   const start = useCallback(
     async (opts: { mode: ChatMode; interestTags: string[] }) => {
@@ -107,14 +126,15 @@ export function useWebRTC() {
   );
 
   const skip = useCallback(() => {
-    if (sessionIdRef.current) socketRef.current.emit("skip", { sessionId: sessionIdRef.current });
-    requeue();
+    const endedSessionId = sessionIdRef.current;
+    if (endedSessionId) socketRef.current.emit("skip", { sessionId: endedSessionId });
+    requeue(endedSessionId, true);
   }, [requeue]);
 
   const report = useCallback(
     (reason: ReportReason) => {
       if (sessionIdRef.current) socketRef.current.emit("report", { sessionId: sessionIdRef.current, reason });
-      requeue();
+      requeue(null, false);
     },
     [requeue],
   );
@@ -124,8 +144,18 @@ export function useWebRTC() {
     socketRef.current.emit("leave_queue");
     teardownPeer();
     stopLocalMedia();
+    clearRematchTimer();
+    setRematch(null);
     setStatus("idle");
-  }, [teardownPeer, stopLocalMedia]);
+  }, [teardownPeer, stopLocalMedia, clearRematchTimer]);
+
+  const requestRematch = useCallback(() => {
+    setRematch((prev) => {
+      if (!prev) return prev;
+      socketRef.current.emit("rematch", { sessionId: prev.sessionId });
+      return { ...prev, requestedByMe: true };
+    });
+  }, []);
 
   const sendMessage = useCallback((text: string) => {
     if (!sessionIdRef.current || !text.trim()) return;
@@ -140,6 +170,8 @@ export function useWebRTC() {
       sessionIdRef.current = data.sessionId;
       setSharedTags(data.sharedTags);
       setStatus("connected");
+      clearRematchTimer();
+      setRematch(null);
 
       const pc = createPeerConnection(data.sessionId, lastOptsRef.current.mode);
       if (data.isInitiator) {
@@ -182,7 +214,7 @@ export function useWebRTC() {
         setStatus("banned");
         return;
       }
-      requeue();
+      requeue(data.sessionId, data.reason === "skip" || data.reason === "disconnect");
     }
 
     function onModerationFlag(data: { severity: "warn" | "ban" }) {
@@ -208,7 +240,7 @@ export function useWebRTC() {
       socket.off("moderation_flag", onModerationFlag);
       socket.off("connect_error", onConnectError);
     };
-  }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia]);
+  }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia, clearRematchTimer]);
 
   useEffect(() => stop, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -224,6 +256,8 @@ export function useWebRTC() {
     report,
     stop,
     sendMessage,
+    rematch,
+    requestRematch,
     sessionId: sessionIdRef.current,
   };
 }

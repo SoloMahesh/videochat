@@ -99,7 +99,16 @@ export default function ChatPage() {
           <div className="glass mx-auto max-w-md rounded-xl2 p-8 text-center animate-fade-in">
             <p className="font-mono text-sm uppercase tracking-wide text-accent-ink animate-pulse">Searching…</p>
             <p className="mt-2 text-sm text-ink-muted">Looking for someone to bounce with.</p>
-            <button onClick={rtc.stop} className="mt-6 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+            {rtc.rematch && (
+              <button
+                onClick={rtc.requestRematch}
+                disabled={rtc.rematch.requestedByMe}
+                className="mt-4 w-full rounded-full border border-accent bg-accent-soft px-5 py-2 text-sm font-medium text-accent-ink transition disabled:opacity-60"
+              >
+                {rtc.rematch.requestedByMe ? "Waiting for them to bounce back too…" : "Bounce back to that last person?"}
+              </button>
+            )}
+            <button onClick={rtc.stop} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
               Cancel
             </button>
             <AdSlot />
