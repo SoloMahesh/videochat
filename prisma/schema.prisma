@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum SessionMode {
+  VIDEO
+  TEXT
+}
+
+enum ReportReason {
+  NUDITY
+  HARASSMENT
+  MINOR_SUSPECTED
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  ACTIONED
+  DISMISSED
+}
+
+enum BanTier {
+  WARN
+  HOUR
+  DAY
+  WEEK
+  PERMANENT
+}
+
+model User {
+  id                String        @id @default(cuid())
+  email             String?       @unique
+  displayName       String?
+  avatarUrl         String?
+  isGuest           Boolean       @default(true)
+  deviceFingerprint String?
+  coinBalance       Int           @default(20)
+  role              Role          @default(USER)
+  ageConfirmedAt    DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  subscription      Subscription?
+  bans              Ban[]
+  reportsFiled      Report[]      @relation("ReportsFiled")
+  reportsAgainst    Report[]      @relation("ReportsAgainst")
+  sessionsAsA       ChatSession[] @relation("SessionUserA")
+  sessionsAsB       ChatSession[] @relation("SessionUserB")
+  coinTransactions  CoinTransaction[]
+  referralsMade     Referral[]    @relation("Referrer")
+  referredBy        Referral?     @relation("Referee")
+
+  @@index([deviceFingerprint])
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String
+  stripeSubId      String   @unique
+  status           String
+  currentPeriodEnd DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ChatSession {
+  id                  String       @id @default(cuid())
+  userAId             String
+  userBId             String?
+  userA               User         @relation("SessionUserA", fields: [userAId], references: [id])
+  userB               User?        @relation("SessionUserB", fields: [userBId], references: [id])
+  mode                SessionMode
+  interestTagsMatched String[]     @default([])
+  startedAt           DateTime     @default(now())
+  endedAt             DateTime?
+  endReason           String?
+
+  reports             Report[]
+
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Report {
+  id           String       @id @default(cuid())
+  sessionId    String
+  session      ChatSession  @relation(fields: [sessionId], references: [id])
+  reporterId   String
+  reportedId   String
+  reporter     User         @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reported     User         @relation("ReportsAgainst", fields: [reportedId], references: [id])
+  reason       ReportReason
+  snapshotHash String?
+  status       ReportStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+
+  @@index([reportedId])
+  @@index([status])
+}
+
+model Ban {
+  id                String    @id @default(cuid())
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id])
+  deviceFingerprint String?
+  ipHash            String?
+  reason            String
+  tier              BanTier
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([deviceFingerprint])
+  @@index([ipHash])
+  @@index([userId])
+}
+
+model CoinTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  delta           Int
+  reason          String
+  stripePaymentId String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Referral {
+  id          String    @id @default(cuid())
+  referrerId  String
+  referrer    User      @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId   String    @unique
+  referee     User      @relation("Referee", fields: [refereeId], references: [id])
+  rewardedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model ModerationScan {
+  id         String   @id @default(cuid())
+  userId     String
+  score      Float
+  severity   String
+  snapshotHash String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
