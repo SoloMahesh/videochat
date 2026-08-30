@@ -6,6 +6,7 @@ import { hashIp } from "@/lib/fingerprint";
 import { claimMatch, enqueue, removeBySocket, type SessionMode, type Gender, type GenderFilter } from "@/lib/matchmaking/queue";
 import { resolveGenderFilter } from "@/lib/matchmaking/genderFilter";
 import { maybeRewardReferral } from "@/lib/referral";
+import { getBlockedUserIds, createBlock } from "@/lib/block";
 import { randomUUID } from "node:crypto";
 
 type Peer = { socketId: string; userId: string };
@@ -196,7 +197,10 @@ export function registerSocketServer(io: Server) {
         const { desiredGender, downgraded } = await resolveGenderFilter(userId, requestedGender);
         if (downgraded) socket.emit("filter_downgraded", { filter: "gender" });
 
-        const selfUser = await prisma.user.findUnique({ where: { id: userId }, select: { gender: true } });
+        const [selfUser, blockedUserIds] = await Promise.all([
+          prisma.user.findUnique({ where: { id: userId }, select: { gender: true } }),
+          getBlockedUserIds(userId),
+        ]);
 
         const entry = {
           socketId: socket.id,
@@ -206,6 +210,7 @@ export function registerSocketServer(io: Server) {
           language: payload.language,
           gender: (selfUser?.gender as Gender | undefined) ?? undefined,
           desiredGender,
+          blockedUserIds,
           joinedAt: Date.now(),
         };
 
@@ -279,6 +284,16 @@ export function registerSocketServer(io: Server) {
 
     socket.on("skip", async (payload: { sessionId: string }) => {
       await endSession(io, payload.sessionId, "skip");
+    });
+
+    socket.on("block", async (payload: { sessionId: string }) => {
+      const session = sessions.get(payload.sessionId);
+      if (!session) return;
+      const peer = session.a.socketId === socket.id ? session.b : session.a;
+      if (peer.socketId === socket.id) return;
+
+      await createBlock(userId, peer.userId);
+      await endSession(io, payload.sessionId, "block");
     });
 
     socket.on(

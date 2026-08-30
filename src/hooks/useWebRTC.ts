@@ -147,6 +147,11 @@ export function useWebRTC() {
     [requeue],
   );
 
+  const block = useCallback(() => {
+    if (sessionIdRef.current) socketRef.current.emit("block", { sessionId: sessionIdRef.current });
+    requeue(null, false);
+  }, [requeue]);
+
   const stop = useCallback(() => {
     if (sessionIdRef.current) socketRef.current.emit("skip", { sessionId: sessionIdRef.current });
     socketRef.current.emit("leave_queue");
@@ -277,6 +282,15 @@ export function useWebRTC() {
 
   useEffect(() => stop, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (status !== "connected" && status !== "searching") return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") stop();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [status, stop]);
+
   return {
     status,
     messages,
@@ -287,6 +301,7 @@ export function useWebRTC() {
     start,
     skip,
     report,
+    block,
     stop,
     sendMessage,
     rematch,

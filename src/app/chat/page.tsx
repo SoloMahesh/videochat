@@ -268,10 +268,18 @@ export default function ChatPage() {
               >
                 Report
               </button>
+              <button
+                onClick={rtc.block}
+                title="Never match this person again — no report filed"
+                className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink-muted hover:text-ink"
+              >
+                Block
+              </button>
               <button onClick={rtc.stop} className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink-muted hover:text-ink">
                 Stop
               </button>
             </div>
+            <p className="mt-3 text-center font-mono text-[10px] text-ink-muted">Press Esc anytime to instantly end the call</p>
           </div>
         )}
       </main>

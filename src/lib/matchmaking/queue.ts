@@ -10,6 +10,7 @@ export type QueueEntry = {
   language?: string;
   gender?: Gender;
   desiredGender: GenderFilter;
+  blockedUserIds: Set<string>;
   joinedAt: number;
 };
 
@@ -41,6 +42,7 @@ function compatible(a: QueueEntry, b: QueueEntry): boolean {
   if (a.mode !== b.mode) return false;
   if (a.language && b.language && a.language !== b.language) return false;
   if (!genderMatches(a.desiredGender, b.gender) || !genderMatches(b.desiredGender, a.gender)) return false;
+  if (a.blockedUserIds.has(b.userId) || b.blockedUserIds.has(a.userId)) return false;
   return true;
 }
 
