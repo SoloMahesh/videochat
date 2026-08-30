@@ -32,5 +32,38 @@ export async function POST(req: NextRequest) {
     ]);
   }
 
+  if (event.type === "subscription_active") {
+    await prisma.subscription.upsert({
+      where: { userId: event.userId },
+      create: {
+        userId: event.userId,
+        stripeCustomerId: event.stripeCustomerId,
+        stripeSubId: event.stripeSubId,
+        status: event.status,
+        currentPeriodEnd: event.currentPeriodEnd,
+      },
+      update: {
+        stripeCustomerId: event.stripeCustomerId,
+        stripeSubId: event.stripeSubId,
+        status: event.status,
+        currentPeriodEnd: event.currentPeriodEnd,
+      },
+    });
+  }
+
+  if (event.type === "subscription_updated") {
+    await prisma.subscription.updateMany({
+      where: { stripeSubId: event.stripeSubId },
+      data: { status: event.status, currentPeriodEnd: event.currentPeriodEnd },
+    });
+  }
+
+  if (event.type === "subscription_canceled") {
+    await prisma.subscription.updateMany({
+      where: { stripeSubId: event.stripeSubId },
+      data: { status: "canceled" },
+    });
+  }
+
   return NextResponse.json({ received: true });
 }

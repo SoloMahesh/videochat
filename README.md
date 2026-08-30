@@ -29,7 +29,7 @@ To ship a change later: `git pull`, `docker compose build`, `docker compose up -
 
 ### Stripe webhook
 
-Point a Stripe webhook endpoint at `https://<your-domain>/api/payments/webhook` for the `checkout.session.completed` event, and put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+Point a Stripe webhook endpoint at `https://<your-domain>/api/payments/webhook` for the `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted` events, and put its signing secret in `STRIPE_WEBHOOK_SECRET`. The first covers both coin-pack purchases and new Bounce+ subscriptions; the other two keep subscription status in sync (renewals, failed payments, cancellations).
 
 ### Before public launch — do not skip
 

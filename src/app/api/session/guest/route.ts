@@ -3,6 +3,7 @@ import { resolveOrCreateUser, signSessionValue, verifySessionValue, SESSION_COOK
 import { activeBan } from "@/lib/ban";
 import { hashIp, requestIp } from "@/lib/fingerprint";
 import { applyDailyStreak } from "@/lib/streak";
+import { hasActiveSubscription } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
 
   let user = await resolveOrCreateUser(cookieUserId, deviceId);
   user = await applyDailyStreak(user);
+  const subscribed = await hasActiveSubscription(user.id);
 
   const res = NextResponse.json({
     id: user.id,
@@ -30,6 +32,7 @@ export async function POST(req: NextRequest) {
     coinBalance: user.coinBalance,
     ageConfirmed: Boolean(user.ageConfirmedAt),
     streakCount: user.streakCount,
+    subscribed,
   });
 
   res.cookies.set(SESSION_COOKIE, signSessionValue(user.id), {

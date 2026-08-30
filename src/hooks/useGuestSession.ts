@@ -9,6 +9,7 @@ export type GuestSession = {
   coinBalance: number;
   ageConfirmed: boolean;
   streakCount: number;
+  subscribed: boolean;
 };
 
 type State =

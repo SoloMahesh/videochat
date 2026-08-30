@@ -58,6 +58,9 @@ export default function LandingPage() {
           <Link href="/invite" className="hover:text-ink">
             Invite
           </Link>
+          <Link href="/upgrade" className="hover:text-ink">
+            Bounce+
+          </Link>
           {!authSession && (
             <Link href="/sign-in" className="hover:text-ink">
               Sign in

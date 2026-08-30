@@ -91,7 +91,7 @@ export default function ChatPage() {
             >
               Start
             </button>
-            <AdSlot />
+            {!state.session.subscribed && <AdSlot />}
           </div>
         )}
 
@@ -120,7 +120,7 @@ export default function ChatPage() {
             <button onClick={rtc.stop} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
               Cancel
             </button>
-            <AdSlot />
+            {!state.session.subscribed && <AdSlot />}
           </div>
         )}
 
