@@ -196,6 +196,24 @@ export default function ChatPage() {
                 {rtc.cardOffer.requestedByMe ? "Waiting for them to agree…" : "Get a shareable card of that chat?"}
               </button>
             )}
+            {rtc.friendOffer && !rtc.friendAdded && (
+              <button
+                onClick={rtc.requestFriend}
+                disabled={rtc.friendOffer.requestedByMe}
+                className="mt-2 w-full rounded-full border border-line px-5 py-2 text-sm font-medium text-ink-muted transition hover:text-ink disabled:opacity-60"
+              >
+                {rtc.friendOffer.requestedByMe ? "Waiting for them to add you too…" : "Add them as a friend?"}
+              </button>
+            )}
+            {rtc.friendAdded && (
+              <p className="mt-2 text-xs text-accent2">
+                You&rsquo;re friends now —{" "}
+                <Link href="/friends" className="underline underline-offset-2">
+                  message them anytime
+                </Link>
+                .
+              </p>
+            )}
             <button onClick={rtc.stop} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
               Cancel
             </button>

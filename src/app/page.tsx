@@ -64,6 +64,9 @@ export default function LandingPage() {
           <Link href="/profile" className="hover:text-ink">
             Profile
           </Link>
+          <Link href="/friends" className="hover:text-ink">
+            Friends
+          </Link>
           {!authSession && (
             <Link href="/sign-in" className="hover:text-ink">
               Sign in

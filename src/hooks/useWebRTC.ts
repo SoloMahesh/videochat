@@ -36,6 +36,8 @@ export function useWebRTC() {
   const [cardOffer, setCardOffer] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
   const [shareCard, setShareCard] = useState<ShareCard | null>(null);
   const [safeMode, setSafeMode] = useState<SafeModeState | null>(null);
+  const [friendOffer, setFriendOffer] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
+  const [friendAdded, setFriendAdded] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -100,16 +102,20 @@ export function useWebRTC() {
       setWarning(null);
       setStatus("searching");
       clearRematchTimer();
+      setFriendAdded(false);
       if (offerRematch && endedSessionId) {
         setRematch({ sessionId: endedSessionId, requestedByMe: false });
         setCardOffer({ sessionId: endedSessionId, requestedByMe: false });
+        setFriendOffer({ sessionId: endedSessionId, requestedByMe: false });
         rematchTimeoutRef.current = setTimeout(() => {
           setRematch(null);
           setCardOffer(null);
+          setFriendOffer(null);
         }, REMATCH_WINDOW_MS);
       } else {
         setRematch(null);
         setCardOffer(null);
+        setFriendOffer(null);
       }
       socketRef.current.emit("join_queue", lastOptsRef.current);
     },
@@ -162,6 +168,7 @@ export function useWebRTC() {
     clearRematchTimer();
     setRematch(null);
     setCardOffer(null);
+    setFriendOffer(null);
     setSafeMode(null);
     setStatus("idle");
   }, [teardownPeer, stopLocalMedia, clearRematchTimer]);
@@ -178,6 +185,14 @@ export function useWebRTC() {
     setCardOffer((prev) => {
       if (!prev) return prev;
       socketRef.current.emit("share_card", { sessionId: prev.sessionId });
+      return { ...prev, requestedByMe: true };
+    });
+  }, []);
+
+  const requestFriend = useCallback(() => {
+    setFriendOffer((prev) => {
+      if (!prev) return prev;
+      socketRef.current.emit("add_friend", { sessionId: prev.sessionId });
       return { ...prev, requestedByMe: true };
     });
   }, []);
@@ -205,6 +220,7 @@ export function useWebRTC() {
       clearRematchTimer();
       setRematch(null);
       setCardOffer(null);
+      setFriendOffer(null);
       setSafeMode(data.safeMode ? { active: true, selfConsented: false, peerConsented: false } : null);
 
       const pc = createPeerConnection(data.sessionId, lastOptsRef.current.mode);
@@ -269,6 +285,11 @@ export function useWebRTC() {
       setSafeMode(data.cleared ? null : { active: true, selfConsented: data.selfConsented, peerConsented: data.peerConsented });
     }
 
+    function onFriendAdded(data: { sessionId: string }) {
+      setFriendOffer((prev) => (prev && prev.sessionId === data.sessionId ? null : prev));
+      setFriendAdded(true);
+    }
+
     function onConnectError() {
       setStatus("error");
     }
@@ -281,6 +302,7 @@ export function useWebRTC() {
     socket.on("share_card_ready", onShareCardReady);
     socket.on("filter_downgraded", onFilterDowngraded);
     socket.on("safe_mode_status", onSafeModeStatus);
+    socket.on("friend_added", onFriendAdded);
     socket.on("connect_error", onConnectError);
 
     return () => {
@@ -292,6 +314,7 @@ export function useWebRTC() {
       socket.off("share_card_ready", onShareCardReady);
       socket.off("filter_downgraded", onFilterDowngraded);
       socket.off("safe_mode_status", onSafeModeStatus);
+      socket.off("friend_added", onFriendAdded);
       socket.off("connect_error", onConnectError);
     };
   }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia, clearRematchTimer]);
@@ -328,6 +351,9 @@ export function useWebRTC() {
     dismissShareCard,
     safeMode,
     consentSafeMode,
+    friendOffer,
+    friendAdded,
+    requestFriend,
     sessionId: sessionIdRef.current,
   };
 }

@@ -8,6 +8,7 @@ import { resolveGenderFilter } from "@/lib/matchmaking/genderFilter";
 import { maybeRewardReferral } from "@/lib/referral";
 import { getBlockedUserIds, createBlock } from "@/lib/block";
 import { isNewAndFree } from "@/lib/safeMode";
+import { makeFriends } from "@/lib/friends";
 import { randomUUID } from "node:crypto";
 
 type Peer = { socketId: string; userId: string };
@@ -38,14 +39,47 @@ type PostSessionWindow = {
   bWantsRematch: boolean;
   aWantsCard: boolean;
   bWantsCard: boolean;
+  aWantsFriend: boolean;
+  bWantsFriend: boolean;
   timeout: ReturnType<typeof setTimeout>;
 };
 
-const sessions = new Map<string, ActiveSession>();
-const sessionBySocket = new Map<string, string>();
-const socketsByUser = new Map<string, Socket>();
-const postSessionWindows = new Map<string, PostSessionWindow>();
-let ioRef: Server | null = null;
+/**
+ * server.ts (run directly by tsx) and Next's API routes (bundled
+ * separately by webpack) end up as two different instantiations of this
+ * module in the same process — a plain module-level `const` would give
+ * each its own private Map, so an API route calling emitToUser() would
+ * write to a Map the real socket connections never touch. Storing the
+ * shared mutable state on globalThis (same fix as the Prisma client
+ * singleton in src/lib/prisma.ts) makes every instantiation read and
+ * write the one true state, in dev and production alike. Found this via
+ * a live DM push that silently never arrived — see the git history for
+ * the repro.
+ */
+const globalForSocket = globalThis as unknown as {
+  __bounceSocketState?: {
+    sessions: Map<string, ActiveSession>;
+    sessionBySocket: Map<string, string>;
+    socketsByUser: Map<string, Socket>;
+    postSessionWindows: Map<string, PostSessionWindow>;
+    ioRef: Server | null;
+  };
+};
+
+const sharedState =
+  globalForSocket.__bounceSocketState ??
+  (globalForSocket.__bounceSocketState = {
+    sessions: new Map<string, ActiveSession>(),
+    sessionBySocket: new Map<string, string>(),
+    socketsByUser: new Map<string, Socket>(),
+    postSessionWindows: new Map<string, PostSessionWindow>(),
+    ioRef: null,
+  });
+
+const sessions = sharedState.sessions;
+const sessionBySocket = sharedState.sessionBySocket;
+const socketsByUser = sharedState.socketsByUser;
+const postSessionWindows = sharedState.postSessionWindows;
 
 const POST_SESSION_WINDOW_MS = 30_000;
 const REQUEUEABLE_REASONS = new Set(["skip", "disconnect"]);
@@ -81,10 +115,11 @@ export function emitToUser(userId: string, event: string, payload: unknown) {
  * flagged as severe — see docs/FSD.md §5. */
 export async function forceEndSessionForUser(userId: string, reason: string) {
   const socket = socketsByUser.get(userId);
-  if (!socket || !ioRef) return;
+  const io = sharedState.ioRef;
+  if (!socket || !io) return;
   const sessionId = sessionBySocket.get(socket.id);
   if (!sessionId) return;
-  await endSession(ioRef, sessionId, reason);
+  await endSession(io, sessionId, reason);
 }
 
 async function createMatchedSession(
@@ -162,13 +197,15 @@ async function endSession(io: Server, sessionId: string, reasonA: string, reason
       bWantsRematch: false,
       aWantsCard: false,
       bWantsCard: false,
+      aWantsFriend: false,
+      bWantsFriend: false,
       timeout,
     });
   }
 }
 
 export function registerSocketServer(io: Server) {
-  ioRef = io;
+  sharedState.ioRef = io;
 
   io.use(async (socket, next) => {
     const cookies = parseCookies(socket.handshake.headers.cookie);
@@ -275,6 +312,23 @@ export function registerSocketServer(io: Server) {
         const bSocket = socketsByUser.get(win.bUserId);
         if (aSocket) io.to(aSocket.id).emit("share_card_ready", { sessionId: payload.sessionId, card });
         if (bSocket) io.to(bSocket.id).emit("share_card_ready", { sessionId: payload.sessionId, card });
+      }
+    });
+
+    socket.on("add_friend", async (payload: { sessionId: string }) => {
+      const win = postSessionWindows.get(payload.sessionId);
+      if (!win) return;
+
+      if (userId === win.aUserId) win.aWantsFriend = true;
+      else if (userId === win.bUserId) win.bWantsFriend = true;
+      else return;
+
+      if (win.aWantsFriend && win.bWantsFriend) {
+        await makeFriends(win.aUserId, win.bUserId);
+        const aSocket = socketsByUser.get(win.aUserId);
+        const bSocket = socketsByUser.get(win.bUserId);
+        if (aSocket) io.to(aSocket.id).emit("friend_added", { sessionId: payload.sessionId });
+        if (bSocket) io.to(bSocket.id).emit("friend_added", { sessionId: payload.sessionId });
       }
     });
 
