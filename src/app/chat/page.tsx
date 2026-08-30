@@ -1,0 +1,412 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AmbientBackground } from "@/components/AmbientBackground";
+import { AgeGate } from "@/components/AgeGate";
+import { useGuestSession } from "@/hooks/useGuestSession";
+import { useWebRTC, type ChatMode, type ReportReason, type GenderFilter } from "@/hooks/useWebRTC";
+import { useModerationScan } from "@/hooks/useModerationScan";
+import { AdSlot } from "@/components/AdSlot";
+
+const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: "NUDITY", label: "Nudity or sexual content" },
+  { value: "HARASSMENT", label: "Harassment or hate speech" },
+  { value: "MINOR_SUSPECTED", label: "This looks like a minor" },
+  { value: "SPAM", label: "Spam or advertising" },
+  { value: "OTHER", label: "Something else" },
+];
+
+export default function ChatPage() {
+  const { state, confirmAge, setGender } = useGuestSession();
+  const rtc = useWebRTC();
+  const [mode, setMode] = useState<ChatMode>("VIDEO");
+  const [tagsInput, setTagsInput] = useState("");
+  const [languageInput, setLanguageInput] = useState("");
+  const [desiredGender, setDesiredGender] = useState<GenderFilter>("ANY");
+  const [draft, setDraft] = useState("");
+  const [showReport, setShowReport] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  useModerationScan({ active: rtc.status === "connected" && mode === "VIDEO", videoRef: rtc.localVideoRef });
+
+  async function shareTheCard() {
+    if (!rtc.shareCard) return;
+    const text = `${rtc.shareCard.vibe} Bounced for ${rtc.shareCard.durationSeconds}s on Bounce${
+      rtc.shareCard.sharedTags.length > 0 ? ` — shared interest: ${rtc.shareCard.sharedTags.join(", ")}` : ""
+    }`;
+    const url = typeof window !== "undefined" ? window.location.origin : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ text, url });
+        return;
+      } catch {
+        // user cancelled the native share sheet — fall through to clipboard
+      }
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  }
+
+  useEffect(() => {
+    if (state.status === "ready" && state.session.defaultInterestTags.length > 0 && tagsInput === "") {
+      setTagsInput(state.session.defaultInterestTags.join(", "));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
+  if (state.status !== "ready") {
+    return (
+      <>
+        <AmbientBackground />
+        <div className="flex min-h-screen items-center justify-center font-mono text-sm text-ink-muted">
+          {state.status === "banned" ? "This device is currently banned from Bounce." : "Loading…"}
+        </div>
+      </>
+    );
+  }
+
+  const interestTags = tagsInput
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  return (
+    <>
+      <AmbientBackground />
+      {!state.session.ageConfirmed && <AgeGate onConfirm={confirmAge} />}
+
+      <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
+        <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
+          Bounce
+        </Link>
+        <Link href="/coins" className="font-mono text-xs text-ink-muted hover:text-ink">
+          {state.session.coinBalance} coins
+        </Link>
+      </header>
+
+      <main className="mx-auto max-w-4xl px-6 pb-24">
+        {rtc.status === "idle" && (
+          <div className="card mx-auto max-w-md p-8 animate-fade-in">
+            <h1 className="font-display text-2xl font-bold">Ready when you are</h1>
+            <p className="mt-2 text-sm text-ink-muted">Pick a mode, add a few interests if you want, then bounce in.</p>
+
+            <div className="mt-6 flex gap-2">
+              {(["VIDEO", "TEXT"] as ChatMode[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`btn btn-sm flex-1 ${
+                    mode === m ? "bg-accent-soft text-accent-ink shadow-inset-sm" : "btn-ghost"
+                  }`}
+                >
+                  {m === "VIDEO" ? "Video" : "Text only"}
+                </button>
+              ))}
+            </div>
+
+            <input
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="interests, comma, separated"
+              className="input2 mt-4"
+            />
+
+            <input
+              value={languageInput}
+              onChange={(e) => setLanguageInput(e.target.value)}
+              placeholder="language, e.g. en (optional)"
+              className="input2 mt-3"
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-3 text-left">
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">You are</label>
+                <select
+                  value={state.session.gender ?? ""}
+                  onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")}
+                  className="input2 mt-1 h-9 text-sm"
+                >
+                  <option value="" disabled>
+                    Choose
+                  </option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                  Looking for {!state.session.subscribed && "(15 coins)"}
+                </label>
+                <select
+                  value={desiredGender}
+                  onChange={(e) => setDesiredGender(e.target.value as GenderFilter)}
+                  className="input2 mt-1 h-9 text-sm"
+                >
+                  <option value="ANY">Anyone</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={() =>
+                rtc.start({
+                  mode,
+                  interestTags,
+                  language: languageInput.trim() || undefined,
+                  desiredGender,
+                })
+              }
+              className="btn btn-primary btn-md mt-6 w-full"
+            >
+              Start
+            </button>
+            {!state.session.subscribed && <AdSlot />}
+          </div>
+        )}
+
+        {rtc.status === "searching" && (
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
+            <p className="font-mono text-sm uppercase tracking-wide text-accent-ink animate-pulse">Searching…</p>
+            <p className="mt-2 text-sm text-ink-muted">Looking for someone to bounce with.</p>
+            {rtc.warning && <p className="mt-2 text-xs text-accent-ink">{rtc.warning}</p>}
+            {rtc.rematch && (
+              <button
+                onClick={rtc.requestRematch}
+                disabled={rtc.rematch.requestedByMe}
+                className="btn btn-sm mt-4 w-full bg-accent-soft text-accent-ink shadow-inset-sm disabled:opacity-60"
+              >
+                {rtc.rematch.requestedByMe ? "Waiting for them to bounce back too…" : "Bounce back to that last person?"}
+              </button>
+            )}
+            {rtc.cardOffer && (
+              <button
+                onClick={rtc.requestShareCard}
+                disabled={rtc.cardOffer.requestedByMe}
+                className="btn btn-ghost btn-sm mt-2 w-full disabled:opacity-60"
+              >
+                {rtc.cardOffer.requestedByMe ? "Waiting for them to agree…" : "Get a shareable card of that chat?"}
+              </button>
+            )}
+            {rtc.friendOffer && !rtc.friendAdded && (
+              <button
+                onClick={rtc.requestFriend}
+                disabled={rtc.friendOffer.requestedByMe}
+                className="btn btn-ghost btn-sm mt-2 w-full disabled:opacity-60"
+              >
+                {rtc.friendOffer.requestedByMe ? "Waiting for them to add you too…" : "Add them as a friend?"}
+              </button>
+            )}
+            {rtc.friendAdded && (
+              <p className="mt-2 text-xs text-accent2">
+                You&rsquo;re friends now —{" "}
+                <Link href="/friends" className="underline underline-offset-2">
+                  message them anytime
+                </Link>
+                .
+              </p>
+            )}
+            <button onClick={rtc.stop} className="btn btn-ghost btn-sm mt-3">
+              Cancel
+            </button>
+            {!state.session.subscribed && <AdSlot />}
+          </div>
+        )}
+
+        {rtc.status === "banned" && (
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
+            <p className="font-display text-lg font-bold">You&rsquo;ve been banned</p>
+            <p className="mt-2 text-sm text-ink-muted">This device was reported and confirmed for a guideline violation.</p>
+          </div>
+        )}
+
+        {rtc.status === "error" && (
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
+            <p className="font-display text-lg font-bold">Couldn&rsquo;t connect</p>
+            <p className="mt-2 text-sm text-ink-muted">Check your camera/mic permissions and try again.</p>
+            <button onClick={rtc.stop} className="btn btn-ghost btn-sm mt-6">
+              Back
+            </button>
+          </div>
+        )}
+
+        {rtc.status === "connected" && (
+          <div className="animate-fade-in">
+            {rtc.warning && (
+              <div className="mb-4 rounded-xl2 bg-accent-soft px-4 py-2 text-center text-sm text-accent-ink shadow-flat">
+                {rtc.warning}
+              </div>
+            )}
+
+            {rtc.sharedTags.length > 0 && (
+              <p className="mb-3 text-center font-mono text-xs text-ink-muted">
+                shared interest: {rtc.sharedTags.join(", ")}
+              </p>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-[2fr,1fr]">
+              <div className="relative aspect-video overflow-hidden rounded-xl2 bg-surface-2 shadow-flat">
+                {mode === "VIDEO" ? (
+                  <video
+                    ref={rtc.remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className={`h-full w-full object-cover transition-[filter] duration-500 ${
+                      rtc.safeMode?.active ? "blur-2xl" : ""
+                    }`}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center font-mono text-xs text-ink-muted">text mode</div>
+                )}
+                {rtc.safeMode?.active && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color-mix(in_srgb,var(--color-bg)_40%,transparent)] px-6 text-center">
+                    <p className="font-mono text-[11px] uppercase tracking-wide text-ink">Safe Mode</p>
+                    <p className="max-w-xs text-sm text-ink">
+                      One of you is new here, so video stays blurred until you both feel comfortable.
+                    </p>
+                    <button
+                      onClick={rtc.consentSafeMode}
+                      disabled={rtc.safeMode.selfConsented}
+                      className="btn btn-primary btn-sm disabled:opacity-60"
+                    >
+                      {rtc.safeMode.selfConsented
+                        ? rtc.safeMode.peerConsented
+                          ? "Clearing…"
+                          : "Waiting for them…"
+                        : "I'm comfortable"}
+                    </button>
+                  </div>
+                )}
+                {mode === "VIDEO" && (
+                  <video
+                    ref={rtc.localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="absolute bottom-3 right-3 h-24 w-32 rounded-lg object-cover shadow-extrude-sm"
+                  />
+                )}
+              </div>
+
+              <div className="flex h-[min(60vh,420px)] flex-col rounded-xl2 bg-surface shadow-flat">
+                <div className="flex-1 overflow-y-auto p-3">
+                  {rtc.messages.map((m, i) => (
+                    <div key={i} className={`mb-2 flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
+                      <span
+                        className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-sm ${
+                          m.from === "me" ? "bg-accent text-white" : "bg-surface-2 text-ink"
+                        }`}
+                      >
+                        {m.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    rtc.sendMessage(draft);
+                    setDraft("");
+                  }}
+                  className="flex gap-2 border-t border-line p-3"
+                >
+                  <input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Say something…"
+                    className="input2 h-10 flex-1"
+                  />
+                  <button type="submit" className="btn btn-primary btn-sm">
+                    Send
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-center gap-3">
+              <button onClick={rtc.skip} className="btn btn-primary btn-md">
+                Next →
+              </button>
+              <button
+                onClick={() => setShowReport(true)}
+                className="btn btn-ghost btn-md"
+              >
+                Report
+              </button>
+              <button
+                onClick={rtc.block}
+                title="Never match this person again — no report filed"
+                className="btn btn-ghost btn-md"
+              >
+                Block
+              </button>
+              <button onClick={rtc.stop} className="btn btn-ghost btn-md">
+                Stop
+              </button>
+            </div>
+            <p className="mt-3 text-center font-mono text-[10px] text-ink-muted">Press Esc anytime to instantly end the call</p>
+          </div>
+        )}
+      </main>
+
+      {showReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-bg)_90%,transparent)] px-4 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm rounded-xl2 p-6 animate-fade-in">
+            <h2 className="font-display text-lg font-bold">Report this person</h2>
+            <div className="mt-4 flex flex-col gap-2">
+              {REPORT_REASONS.map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => {
+                    rtc.report(r.value);
+                    setShowReport(false);
+                  }}
+                  className="rounded-xl2 bg-surface-2 px-4 py-3 text-left text-sm text-ink shadow-flat transition hover:bg-accent-soft hover:shadow-extrude-sm"
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowReport(false)} className="btn btn-ghost btn-sm mt-4">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {rtc.shareCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-bg)_90%,transparent)] px-4 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm overflow-hidden rounded-xl2 animate-fade-in">
+            <div className="bg-gradient-to-br from-accent to-accent2 p-8 text-center text-white">
+              <span className="text-5xl">{rtc.shareCard.vibe}</span>
+              <p className="mt-3 font-display text-xl font-bold">Bounced for {rtc.shareCard.durationSeconds}s</p>
+              {rtc.shareCard.sharedTags.length > 0 && (
+                <p className="mt-2 text-sm opacity-90">shared interest: {rtc.shareCard.sharedTags.join(", ")}</p>
+              )}
+              <p className="mt-1 text-xs opacity-75">{rtc.shareCard.mode === "VIDEO" ? "video" : "text"} chat on Bounce</p>
+            </div>
+            <div className="p-4 text-center">
+              <p className="text-xs text-ink-muted">Screenshot this to share — no faces, no names, just the moment.</p>
+              <div className="mt-3 flex justify-center gap-2">
+                <button onClick={shareTheCard} className="btn btn-primary btn-sm">
+                  {shareCopied ? "Copied!" : "Share"}
+                </button>
+                <button onClick={rtc.dismissShareCard} className="btn btn-ghost btn-sm">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

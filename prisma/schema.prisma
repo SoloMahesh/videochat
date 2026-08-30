@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum SessionMode {
+  VIDEO
+  TEXT
+}
+
+enum ReportReason {
+  NUDITY
+  HARASSMENT
+  MINOR_SUSPECTED
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  ACTIONED
+  DISMISSED
+}
+
+enum BanTier {
+  WARN
+  HOUR
+  DAY
+  WEEK
+  PERMANENT
+}
+
+model User {
+  id                String        @id @default(cuid())
+  email             String?       @unique
+  emailVerified     DateTime?
+  name              String?
+  image             String?
+  isGuest           Boolean       @default(true)
+  deviceFingerprint String?
+  coinBalance       Int           @default(20)
+  role              Role          @default(USER)
+  ageConfirmedAt    DateTime?
+  referralCode      String?       @unique
+  streakCount       Int           @default(0)
+  lastVisitAt       DateTime?
+  gender            String?
+  language          String?
+  defaultInterestTags String[]    @default([])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  subscription      Subscription?
+  bans              Ban[]
+  reportsFiled      Report[]      @relation("ReportsFiled")
+  reportsAgainst    Report[]      @relation("ReportsAgainst")
+  sessionsAsA       ChatSession[] @relation("SessionUserA")
+  sessionsAsB       ChatSession[] @relation("SessionUserB")
+  coinTransactions  CoinTransaction[]
+  referralsMade     Referral[]    @relation("Referrer")
+  referredBy        Referral?     @relation("Referee")
+  accounts          Account[]
+  sessionsAuth      Session[]
+  blocksMade        Block[]       @relation("BlockerOf")
+  blocksReceived    Block[]       @relation("BlockedBy")
+  friendRequestsSent     Friendship[] @relation("FriendRequestsSent")
+  friendRequestsReceived Friendship[] @relation("FriendRequestsReceived")
+  messagesSent      Message[]     @relation("MessagesSent")
+  messagesReceived  Message[]     @relation("MessagesReceived")
+
+  @@index([deviceFingerprint])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker   User     @relation("BlockerOf", fields: [blockerId], references: [id])
+  blocked   User     @relation("BlockedBy", fields: [blockedId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  requester   User             @relation("FriendRequestsSent", fields: [requesterId], references: [id])
+  addresseeId String
+  addressee   User             @relation("FriendRequestsReceived", fields: [addresseeId], references: [id])
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("MessagesSent", fields: [senderId], references: [id])
+  recipientId String
+  recipient   User     @relation("MessagesReceived", fields: [recipientId], references: [id])
+  text        String
+  createdAt   DateTime @default(now())
+
+  @@index([senderId, recipientId])
+  @@index([recipientId, senderId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String
+  stripeSubId      String   @unique
+  status           String
+  currentPeriodEnd DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ChatSession {
+  id                  String       @id @default(cuid())
+  userAId             String
+  userBId             String?
+  userA               User         @relation("SessionUserA", fields: [userAId], references: [id])
+  userB               User?        @relation("SessionUserB", fields: [userBId], references: [id])
+  mode                SessionMode
+  interestTagsMatched String[]     @default([])
+  startedAt           DateTime     @default(now())
+  endedAt             DateTime?
+  endReason           String?
+
+  reports             Report[]
+
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Report {
+  id           String       @id @default(cuid())
+  sessionId    String
+  session      ChatSession  @relation(fields: [sessionId], references: [id])
+  reporterId   String
+  reportedId   String
+  reporter     User         @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reported     User         @relation("ReportsAgainst", fields: [reportedId], references: [id])
+  reason       ReportReason
+  snapshotHash String?
+  status       ReportStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+
+  @@index([reportedId])
+  @@index([status])
+}
+
+model Ban {
+  id                String    @id @default(cuid())
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id])
+  deviceFingerprint String?
+  ipHash            String?
+  reason            String
+  tier              BanTier
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([deviceFingerprint])
+  @@index([ipHash])
+  @@index([userId])
+}
+
+model CoinTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  delta           Int
+  reason          String
+  stripePaymentId String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Referral {
+  id          String    @id @default(cuid())
+  referrerId  String
+  referrer    User      @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId   String    @unique
+  referee     User      @relation("Referee", fields: [refereeId], references: [id])
+  rewardedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model ModerationScan {
+  id         String   @id @default(cuid())
+  userId     String
+  score      Float
+  severity   String
+  snapshotHash String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
