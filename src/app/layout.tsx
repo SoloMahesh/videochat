@@ -22,10 +22,15 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+const siteUrl = process.env.APP_URL ?? "http://localhost:3000";
+const title = "Bounce — talk to someone new";
+const description =
+  "Bounce is a random video and text chat app. No signup, one tap, matched by shared interests, kept clean by real moderation.";
+
 export const metadata: Metadata = {
-  title: "Bounce — talk to someone new",
-  description:
-    "Bounce is a random video and text chat app. No signup, one tap, matched by shared interests, kept clean by real moderation.",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon-32.png",
@@ -36,6 +41,21 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Bounce",
   },
+  openGraph: {
+    title,
+    description,
+    url: siteUrl,
+    siteName: "Bounce",
+    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+    images: ["/icon-512.png"],
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
