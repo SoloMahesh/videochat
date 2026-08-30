@@ -2,7 +2,9 @@
 
 Sequenced so each phase ships something testable end-to-end, per the instruction to work "one task at a time" and verify as we go. See `docs/PRD.md` and `docs/FSD.md` for the why/how behind each item.
 
-Status as of this build: **Phase 0 and Phase 1 are code-complete and verified locally. Phase 2 is code-complete and verified locally.** Nothing has been deployed to a real VPS or tested against a live Stripe account — those need your credentials/infra and are called out explicitly below.
+Status as of this build: **Phase 0, Phase 1, and Phase 2 are code-complete and verified against a real production build** (`next build` + the custom server run with `NODE_ENV=production`, not just `next dev`) — see the note below on why that distinction mattered. Nothing has been deployed to a real VPS or tested against a live Stripe account — those need your credentials/infra and are called out explicitly below.
+
+**A cross-check pass against `docs/PRD.md`'s own feature list** (prompted by "is everything actually done") found two MVP-tier items that had been skipped (Block, the panic key) and several V2 items not yet built (Safe Mode, profile editing, share buttons, friends/DM). All are now built and verified below. That same pass also surfaced a real bug, not a missing feature: `server.ts` (run directly by `tsx`) and Next's API routes (bundled separately by webpack) were two different in-memory instantiations of `src/lib/socket/server.ts`, so any API route calling `emitToUser`/`forceEndSessionForUser` — the DM live-push and, more importantly, the moderation "ban"-severity force-disconnect — was silently writing to a socket registry nobody was reading from. Confirmed this reproduced in an actual production build, not just `next dev`, then fixed it by moving that shared state onto `globalThis` (the same pattern already used for the Prisma client singleton) and re-verified both paths live in production mode afterward. Everything under "verified" below was re-run in production mode after that fix, not just the earlier dev-mode passes.
 
 ## Phase 0 — Foundations (infra + skeleton, no product features yet)
 - [x] Next.js 14 + TypeScript project scaffold with custom `server.ts` (Socket.io attached)
@@ -21,14 +23,16 @@ Status as of this build: **Phase 0 and Phase 1 are code-complete and verified lo
 - [x] WebRTC P2P connection code path; coturn TURN fallback is configured in `docker-compose.yml`/`docker/coturn` but needs real credentials + your VPS's public IP before it does anything — see README
 - [x] Skip / Stop controls, instant and reliable
 - [x] Text chat alongside video
+- [x] Block — persistent, no-report way to never match a specific device again (separate from Report/ban)
+- [x] Panic key — Esc during a search or call instantly does what Stop does
 - [x] Report flow (reason picker) wired to the ban escalation ladder
-- [x] Moderation scan endpoint + warn/ban wiring is real; `src/lib/moderation/classify.ts` runs a real skin-tone-ratio heuristic (decoded via `sharp`) rather than a no-op — it's a genuine, decades-old signal, not a trained model, so it over-flags things like beach photos/closeups and under-flags nudity outside its RGB assumptions. **Do not launch on this alone** — swap in a real trained classifier (open model or a paid API) first, see `docs/PRD.md` §6
+- [x] Moderation scan endpoint + warn/ban wiring is real, **and now actually force-disconnects the live call** (the cross-module bug above meant it silently didn't, before this pass); `src/lib/moderation/classify.ts` runs a real skin-tone-ratio heuristic (decoded via `sharp`) rather than a no-op — a genuine, decades-old signal, not a trained model, so it over-flags things like beach photos/closeups and under-flags nudity outside its RGB assumptions. **Do not launch on this alone** — swap in a real trained classifier (open model or a paid API) first, see `docs/PRD.md` §6
 - [x] Ban system (device fingerprint + IP hash), warn → hour → day → week → permanent
 - [x] Coin balance (schema + starting grant of 20)
 - [x] Stripe coin-pack purchase (Checkout + webhook) — code verified, not run against live Stripe keys
 - [x] One ad placement (banner, between matches — never mid-call); currently a labeled placeholder box, no ad network wired in yet
 - [x] Manual admin view: recent reports, ban a reported user, dismiss
-- **Exit criteria**: two real devices can guest-match, video/text works, a report bans convincingly, a coin purchase completes end to end. *Verified*: two-client matchmaking, signaling relay, chat relay, and report→ban all confirmed live against a local Postgres. *Not verified*: an actual browser camera/mic handshake and a completed real Stripe payment — both need things this environment doesn't have (a real browser UI, live Stripe keys).
+- **Exit criteria**: two real devices can guest-match, video/text works, a report bans convincingly, a coin purchase completes end to end. *Verified*: two-client matchmaking, signaling relay, chat relay, report→ban, Block, the panic key (real browser), and the moderation force-disconnect all confirmed live in a production build. *Not verified*: an actual browser camera/mic WebRTC handshake between two peers and a completed real Stripe payment — both need things this environment doesn't have (two real browsers/cameras, live Stripe keys).
 
 ## Phase 2 — Retention & monetization depth
 - [x] Optional account creation (NextAuth: Google + email magic link, both no-op until you set credentials), guest→account data migration verified
@@ -38,13 +42,16 @@ Status as of this build: **Phase 0 and Phase 1 are code-complete and verified lo
 - [x] Rematch ("bounce back") within 30s window
 - [x] Daily streak + reward
 - [x] Referral link + two-sided reward
-- [x] Consent-based post-chat share card
+- [x] Consent-based post-chat share card, with a real Share action (Web Share API + clipboard fallback)
+- [x] Safe Mode — mutual-consent video blur for new/free users on their first few video chats
+- [x] Lightweight profile editing (emoji avatar, display name, default interest tags)
+- [x] Friends (mutual add after a chat, same pattern as Rematch) + a basic DM between friends, with live push when both are online
 - [x] Admin report queue (the ban/dismiss view from Phase 1 — a separate "dashboard" beyond that queue wasn't built, judged not worth the extra scope yet)
 - [x] PWA installability (manifest, icons, minimal service worker)
+- [ ] Cosmetic gifts sendable mid-chat — **not built**. Explicitly deferred: needs an actual gift/animation catalog (art assets this environment can't produce) for a feature the PRD itself already flagged as revenue-thin (no payout, platform-only). Revisit once there's real usage to justify the art budget.
 
 ## Phase 3 — Scale / stretch (only after Phase 1–2 are validated with real users)
 - [ ] Group/interest rooms (3–8 people)
-- [ ] Cosmetic gifting during chat
 - [ ] Leaderboards (opt-in, nickname only)
 - [ ] Re-evaluate infra: split TURN relay onto its own box if bandwidth is the bottleneck (see `docs/FSD.md` §2)
 
@@ -57,4 +64,4 @@ Status as of this build: **Phase 0 and Phase 1 are code-complete and verified lo
 - Set real Stripe keys and confirm a live checkout end to end
 
 ## Explicit non-goals until traction justifies them
-Native mobile apps, creator payouts, paid moderation API, AI translation/chat features, country filter — see `docs/PRD.md` §10.
+Native mobile apps, creator payouts, paid moderation API, AI translation/chat features, country filter, cosmetic gifting — see `docs/PRD.md` §10.
