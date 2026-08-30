@@ -22,7 +22,7 @@ Status as of this build: **Phase 0 and Phase 1 are code-complete and verified lo
 - [x] Skip / Stop controls, instant and reliable
 - [x] Text chat alongside video
 - [x] Report flow (reason picker) wired to the ban escalation ladder
-- [x] Moderation scan endpoint + warn/ban wiring is real; the actual NSFW classifier in `src/lib/moderation/classify.ts` is a clearly-marked placeholder that always returns "safe" — **do not launch without replacing it**, see `docs/PRD.md` §6
+- [x] Moderation scan endpoint + warn/ban wiring is real; `src/lib/moderation/classify.ts` runs a real skin-tone-ratio heuristic (decoded via `sharp`) rather than a no-op — it's a genuine, decades-old signal, not a trained model, so it over-flags things like beach photos/closeups and under-flags nudity outside its RGB assumptions. **Do not launch on this alone** — swap in a real trained classifier (open model or a paid API) first, see `docs/PRD.md` §6
 - [x] Ban system (device fingerprint + IP hash), warn → hour → day → week → permanent
 - [x] Coin balance (schema + starting grant of 20)
 - [x] Stripe coin-pack purchase (Checkout + webhook) — code verified, not run against live Stripe keys
@@ -49,7 +49,7 @@ Status as of this build: **Phase 0 and Phase 1 are code-complete and verified lo
 - [ ] Re-evaluate infra: split TURN relay onto its own box if bandwidth is the bottleneck (see `docs/FSD.md` §2)
 
 ## Before public launch — do not skip (see README for the same list)
-- Replace the placeholder NSFW classifier with a real model
+- Replace the skin-tone-heuristic NSFW classifier with a real trained model (or a paid API) — it functions today but is low-precision by nature
 - Replace the placeholder legal copy on `/terms`
 - Set up the NCMEC CyberTipline reporting process (`docs/FSD.md` §9)
 - Deploy to a real VPS, issue TLS, configure coturn with real credentials
