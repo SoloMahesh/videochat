@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrCreateGuestUser, signSessionValue, SESSION_COOKIE } from "@/lib/session";
+import { resolveOrCreateUser, signSessionValue, verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { activeBan } from "@/lib/ban";
 import { hashIp, requestIp } from "@/lib/fingerprint";
+import { applyDailyStreak } from "@/lib/streak";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -10,8 +11,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing_device_id" }, { status: 400 });
   }
 
+  const cookieUserId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   const ipHash = hashIp(requestIp(req.headers));
-  const ban = await activeBan({ deviceFingerprint: deviceId, ipHash });
+  const ban = await activeBan({ userId: cookieUserId ?? undefined, deviceFingerprint: deviceId, ipHash });
   if (ban) {
     return NextResponse.json(
       { error: "banned", tier: ban.tier, expiresAt: ban.expiresAt },
@@ -19,12 +21,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await getOrCreateGuestUser(deviceId);
+  let user = await resolveOrCreateUser(cookieUserId, deviceId);
+  user = await applyDailyStreak(user);
+
   const res = NextResponse.json({
     id: user.id,
     isGuest: user.isGuest,
     coinBalance: user.coinBalance,
     ageConfirmed: Boolean(user.ageConfirmedAt),
+    streakCount: user.streakCount,
   });
 
   res.cookies.set(SESSION_COOKIE, signSessionValue(user.id), {
@@ -45,7 +50,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const user = await getOrCreateGuestUser(deviceId);
+  const cookieUserId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
+  const user = await resolveOrCreateUser(cookieUserId, deviceId);
   await prisma.user.update({
     where: { id: user.id },
     data: { ageConfirmedAt: new Date() },

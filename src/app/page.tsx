@@ -62,7 +62,9 @@ export default function LandingPage() {
             Start chatting →
           </Link>
           <span className="font-mono text-xs text-ink-muted">
-            {state.status === "ready" ? `${state.session.coinBalance} coins to start` : "loading…"}
+            {state.status === "ready"
+              ? `${state.session.coinBalance} coins to start${state.session.streakCount > 1 ? ` · 🔥 ${state.session.streakCount} day streak` : ""}`
+              : "loading…"}
           </span>
         </div>
 

@@ -42,3 +42,23 @@ export async function getSessionUser(userId: string | null) {
   if (!userId) return null;
   return prisma.user.findUnique({ where: { id: userId } });
 }
+
+/** Resolves the current visitor to a User, preferring the existing
+ * bounce_session cookie over device lookup — otherwise a signed-in user
+ * (or anyone with a still-valid cookie) would spawn a duplicate guest row
+ * every time this endpoint runs, undoing the guest merge in
+ * lib/account-merge.ts. Only falls back to device-based guest
+ * lookup/creation when there's no valid cookie at all (first visit, or an
+ * expired/cleared one). */
+export async function resolveOrCreateUser(cookieUserId: string | null, deviceFingerprint: string) {
+  if (cookieUserId) {
+    const existing = await prisma.user.findUnique({ where: { id: cookieUserId } });
+    if (existing) {
+      if (!existing.deviceFingerprint) {
+        return prisma.user.update({ where: { id: existing.id }, data: { deviceFingerprint } });
+      }
+      return existing;
+    }
+  }
+  return getOrCreateGuestUser(deviceFingerprint);
+}
