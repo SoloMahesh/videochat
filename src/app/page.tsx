@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { AgeGate } from "@/components/AgeGate";
 import { useGuestSession } from "@/hooks/useGuestSession";
@@ -13,6 +14,7 @@ const HIGHLIGHTS = [
 
 export default function LandingPage() {
   const { state, confirmAge } = useGuestSession();
+  const { data: authSession } = useSession();
 
   return (
     <>
@@ -31,6 +33,11 @@ export default function LandingPage() {
           <Link href="/coins" className="hover:text-ink">
             Coins
           </Link>
+          {!authSession && (
+            <Link href="/sign-in" className="hover:text-ink">
+              Sign in
+            </Link>
+          )}
           <Link href="/chat" className="rounded-full border border-line px-4 py-2 text-ink hover:border-accent">
             Start
           </Link>
