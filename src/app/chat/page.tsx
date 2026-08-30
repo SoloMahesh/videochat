@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { AgeGate } from "@/components/AgeGate";
@@ -28,6 +28,13 @@ export default function ChatPage() {
   const [showReport, setShowReport] = useState(false);
 
   useModerationScan({ active: rtc.status === "connected" && mode === "VIDEO", videoRef: rtc.localVideoRef });
+
+  useEffect(() => {
+    if (state.status === "ready" && state.session.defaultInterestTags.length > 0 && tagsInput === "") {
+      setTagsInput(state.session.defaultInterestTags.join(", "));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
 
   if (state.status !== "ready") {
     return (

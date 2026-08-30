@@ -11,6 +11,9 @@ export type GuestSession = {
   streakCount: number;
   subscribed: boolean;
   gender: string | null;
+  name: string | null;
+  avatar: string | null;
+  defaultInterestTags: string[];
 };
 
 type State =

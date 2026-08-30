@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
     streakCount: user.streakCount,
     subscribed,
     gender: user.gender,
+    name: user.name,
+    avatar: user.image,
+    defaultInterestTags: user.defaultInterestTags,
   });
 
   res.cookies.set(SESSION_COOKIE, signSessionValue(user.id), {
