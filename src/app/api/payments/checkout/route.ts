@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { stripeProvider } from "@/lib/payments/stripe-provider";
 import { getPack } from "@/lib/payments/packs";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const userId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const limit = rateLimit(`payments-checkout:${userId}`, 10, 60_000);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
 
   const body = await req.json().catch(() => null);
   const packId = body?.packId;

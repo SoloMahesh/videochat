@@ -9,6 +9,7 @@ import { maybeRewardReferral } from "@/lib/referral";
 import { getBlockedUserIds, createBlock } from "@/lib/block";
 import { isNewAndFree } from "@/lib/safeMode";
 import { makeFriends } from "@/lib/friends";
+import { rateLimit } from "@/lib/rateLimit";
 import { randomUUID } from "node:crypto";
 
 type Peer = { socketId: string; userId: string };
@@ -230,6 +231,9 @@ export function registerSocketServer(io: Server) {
     socket.on(
       "join_queue",
       async (payload: { mode: SessionMode; interestTags?: string[]; language?: string; desiredGender?: GenderFilter }) => {
+        const limit = rateLimit(`join-queue:${userId}`, 30, 10_000);
+        if (!limit.allowed) return;
+
         const ban = await activeBan({ userId, deviceFingerprint: socket.data.deviceId, ipHash: socket.data.ipHash });
         if (ban) {
           socket.emit("session_ended", { sessionId: null, reason: "banned" });

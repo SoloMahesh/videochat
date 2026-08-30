@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionValue, resolveOrCreateUser, SESSION_COOKIE } from "@/lib/session";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { prisma } from "@/lib/prisma";
 
 const VALID_GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
@@ -23,6 +24,9 @@ export async function PATCH(req: NextRequest) {
   const deviceId = req.headers.get("x-device-id");
   const cookieUserId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   if (!deviceId && !cookieUserId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const limit = rateLimit(`profile-patch:${cookieUserId ?? deviceId}`, 20, 60_000);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
 
   const body = await req.json().catch(() => ({}));
   const data: Record<string, unknown> = {};

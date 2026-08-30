@@ -5,10 +5,16 @@ import { verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { classifyFrame, severityFor } from "@/lib/moderation/classify";
 import { escalateAndBan } from "@/lib/ban";
 import { emitToUser, forceEndSessionForUser } from "@/lib/socket/server";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   const userId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  // Model inference is real CPU work — this is the endpoint most worth
+  // protecting from being hammered. Normal usage is ~1 scan per 17-20s.
+  const limit = rateLimit(`moderation-scan:${userId}`, 10, 60_000);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
 
   const body = await req.json().catch(() => null);
   const image = body?.image;

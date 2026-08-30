@@ -3,10 +3,14 @@ import { verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { areFriends, getThread } from "@/lib/friends";
 import { prisma } from "@/lib/prisma";
 import { emitToUser } from "@/lib/socket/server";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
   const userId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const readLimit = rateLimit(`messages-read:${userId}`, 60, 60_000);
+  if (!readLimit.allowed) return rateLimitResponse(readLimit.retryAfterSeconds);
 
   const withUserId = req.nextUrl.searchParams.get("with");
   if (!withUserId) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -19,6 +23,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const sendLimit = rateLimit(`messages-send:${userId}`, 30, 60_000);
+  if (!sendLimit.allowed) return rateLimitResponse(sendLimit.retryAfterSeconds);
 
   const body = await req.json().catch(() => ({}));
   const to = typeof body.to === "string" ? body.to : null;

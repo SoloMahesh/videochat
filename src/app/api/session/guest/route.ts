@@ -4,6 +4,7 @@ import { activeBan } from "@/lib/ban";
 import { hashIp, requestIp } from "@/lib/fingerprint";
 import { applyDailyStreak } from "@/lib/streak";
 import { hasActiveSubscription } from "@/lib/entitlements";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -12,8 +13,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "missing_device_id" }, { status: 400 });
   }
 
+  const ip = requestIp(req.headers);
+  const limit = rateLimit(`guest-session:${ip}`, 40, 60_000);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+
   const cookieUserId = verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value);
-  const ipHash = hashIp(requestIp(req.headers));
+  const ipHash = hashIp(ip);
   const ban = await activeBan({ userId: cookieUserId ?? undefined, deviceFingerprint: deviceId, ipHash });
   if (ban) {
     return NextResponse.json(
@@ -51,6 +56,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const limit = rateLimit(`guest-session-patch:${requestIp(req.headers)}`, 20, 60_000);
+  if (!limit.allowed) return rateLimitResponse(limit.retryAfterSeconds);
+
   const body = await req.json().catch(() => ({}));
   const deviceId = req.headers.get("x-device-id");
   if (!deviceId || body.confirmAge !== true) {
