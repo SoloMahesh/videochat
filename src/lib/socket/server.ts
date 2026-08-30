@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { verifySessionValue, SESSION_COOKIE } from "@/lib/session";
 import { activeBan, escalateAndBan } from "@/lib/ban";
 import { hashIp } from "@/lib/fingerprint";
-import { claimMatch, enqueue, removeBySocket, type SessionMode } from "@/lib/matchmaking/queue";
+import { claimMatch, enqueue, removeBySocket, type SessionMode, type Gender, type GenderFilter } from "@/lib/matchmaking/queue";
+import { resolveGenderFilter } from "@/lib/matchmaking/genderFilter";
 import { maybeRewardReferral } from "@/lib/referral";
 import { randomUUID } from "node:crypto";
 
@@ -178,7 +179,7 @@ export function registerSocketServer(io: Server) {
 
     socket.on(
       "join_queue",
-      async (payload: { mode: SessionMode; interestTags?: string[]; language?: string }) => {
+      async (payload: { mode: SessionMode; interestTags?: string[]; language?: string; desiredGender?: GenderFilter }) => {
         const ban = await activeBan({ userId, deviceFingerprint: socket.data.deviceId, ipHash: socket.data.ipHash });
         if (ban) {
           socket.emit("session_ended", { sessionId: null, reason: "banned" });
@@ -188,12 +189,23 @@ export function registerSocketServer(io: Server) {
         const mode: SessionMode = payload.mode === "TEXT" ? "TEXT" : "VIDEO";
         const interestTags = (payload.interestTags ?? []).slice(0, 10).map((t) => t.toLowerCase().trim()).filter(Boolean);
 
+        const requestedGender: GenderFilter =
+          payload.desiredGender === "MALE" || payload.desiredGender === "FEMALE" || payload.desiredGender === "OTHER"
+            ? payload.desiredGender
+            : "ANY";
+        const { desiredGender, downgraded } = await resolveGenderFilter(userId, requestedGender);
+        if (downgraded) socket.emit("filter_downgraded", { filter: "gender" });
+
+        const selfUser = await prisma.user.findUnique({ where: { id: userId }, select: { gender: true } });
+
         const entry = {
           socketId: socket.id,
           userId,
           mode,
           interestTags,
           language: payload.language,
+          gender: (selfUser?.gender as Gender | undefined) ?? undefined,
+          desiredGender,
           joinedAt: Date.now(),
         };
 

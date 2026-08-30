@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { AgeGate } from "@/components/AgeGate";
 import { useGuestSession } from "@/hooks/useGuestSession";
-import { useWebRTC, type ChatMode, type ReportReason } from "@/hooks/useWebRTC";
+import { useWebRTC, type ChatMode, type ReportReason, type GenderFilter } from "@/hooks/useWebRTC";
 import { useModerationScan } from "@/hooks/useModerationScan";
 import { AdSlot } from "@/components/AdSlot";
 
@@ -18,10 +18,12 @@ const REPORT_REASONS: { value: ReportReason; label: string }[] = [
 ];
 
 export default function ChatPage() {
-  const { state, confirmAge } = useGuestSession();
+  const { state, confirmAge, setGender } = useGuestSession();
   const rtc = useWebRTC();
   const [mode, setMode] = useState<ChatMode>("VIDEO");
   const [tagsInput, setTagsInput] = useState("");
+  const [languageInput, setLanguageInput] = useState("");
+  const [desiredGender, setDesiredGender] = useState<GenderFilter>("ANY");
   const [draft, setDraft] = useState("");
   const [showReport, setShowReport] = useState(false);
 
@@ -85,8 +87,55 @@ export default function ChatPage() {
               className="mt-4 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
             />
 
+            <input
+              value={languageInput}
+              onChange={(e) => setLanguageInput(e.target.value)}
+              placeholder="language, e.g. en (optional)"
+              className="mt-3 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-3 text-left">
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">You are</label>
+                <select
+                  value={state.session.gender ?? ""}
+                  onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")}
+                  className="mt-1 w-full rounded-full border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                >
+                  <option value="" disabled>
+                    Choose
+                  </option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                  Looking for {!state.session.subscribed && "(15 coins)"}
+                </label>
+                <select
+                  value={desiredGender}
+                  onChange={(e) => setDesiredGender(e.target.value as GenderFilter)}
+                  className="mt-1 w-full rounded-full border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                >
+                  <option value="ANY">Anyone</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+            </div>
+
             <button
-              onClick={() => rtc.start({ mode, interestTags })}
+              onClick={() =>
+                rtc.start({
+                  mode,
+                  interestTags,
+                  language: languageInput.trim() || undefined,
+                  desiredGender,
+                })
+              }
               className="mt-6 w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
             >
               Start
@@ -99,6 +148,7 @@ export default function ChatPage() {
           <div className="glass mx-auto max-w-md rounded-xl2 p-8 text-center animate-fade-in">
             <p className="font-mono text-sm uppercase tracking-wide text-accent-ink animate-pulse">Searching…</p>
             <p className="mt-2 text-sm text-ink-muted">Looking for someone to bounce with.</p>
+            {rtc.warning && <p className="mt-2 text-xs text-accent-ink">{rtc.warning}</p>}
             {rtc.rematch && (
               <button
                 onClick={rtc.requestRematch}

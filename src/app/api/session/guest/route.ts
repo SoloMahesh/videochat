@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     ageConfirmed: Boolean(user.ageConfirmedAt),
     streakCount: user.streakCount,
     subscribed,
+    gender: user.gender,
   });
 
   res.cookies.set(SESSION_COOKIE, signSessionValue(user.id), {

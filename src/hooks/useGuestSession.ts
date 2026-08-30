@@ -10,6 +10,7 @@ export type GuestSession = {
   ageConfirmed: boolean;
   streakCount: number;
   subscribed: boolean;
+  gender: string | null;
 };
 
 type State =
@@ -56,5 +57,15 @@ export function useGuestSession() {
     );
   }, []);
 
-  return { state, reload: load, confirmAge };
+  const setGender = useCallback(async (gender: "MALE" | "FEMALE" | "OTHER") => {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "x-device-id": getDeviceId(), "content-type": "application/json" },
+      body: JSON.stringify({ gender }),
+    });
+    if (!res.ok) return;
+    setState((prev) => (prev.status === "ready" ? { status: "ready", session: { ...prev.session, gender } } : prev));
+  }, []);
+
+  return { state, reload: load, confirmAge, setGender };
 }

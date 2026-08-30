@@ -1,4 +1,6 @@
 export type SessionMode = "VIDEO" | "TEXT";
+export type Gender = "MALE" | "FEMALE" | "OTHER";
+export type GenderFilter = Gender | "ANY";
 
 export type QueueEntry = {
   socketId: string;
@@ -6,6 +8,8 @@ export type QueueEntry = {
   mode: SessionMode;
   interestTags: string[];
   language?: string;
+  gender?: Gender;
+  desiredGender: GenderFilter;
   joinedAt: number;
 };
 
@@ -29,9 +33,14 @@ export function queueSize() {
   return queue.length;
 }
 
+function genderMatches(filter: GenderFilter, actual: Gender | undefined): boolean {
+  return filter === "ANY" || filter === actual;
+}
+
 function compatible(a: QueueEntry, b: QueueEntry): boolean {
   if (a.mode !== b.mode) return false;
   if (a.language && b.language && a.language !== b.language) return false;
+  if (!genderMatches(a.desiredGender, b.gender) || !genderMatches(b.desiredGender, a.gender)) return false;
   return true;
 }
 

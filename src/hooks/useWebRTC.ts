@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getSocket } from "@/lib/socket/client";
 
 export type ChatMode = "VIDEO" | "TEXT";
+export type GenderFilter = "MALE" | "FEMALE" | "OTHER" | "ANY";
 export type ReportReason = "NUDITY" | "HARASSMENT" | "MINOR_SUSPECTED" | "SPAM" | "OTHER";
 export type CallStatus = "idle" | "searching" | "connected" | "banned" | "error";
 export type ChatMessage = { from: "me" | "stranger"; text: string };
 export type ShareCard = { sharedTags: string[]; mode: ChatMode; durationSeconds: number; vibe: string };
+export type SearchOptions = { mode: ChatMode; interestTags: string[]; language?: string; desiredGender?: GenderFilter };
 
 function buildIceServers(): RTCIceServer[] {
   const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
@@ -38,7 +40,7 @@ export function useWebRTC() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const sessionIdRef = useRef<string | null>(null);
-  const lastOptsRef = useRef<{ mode: ChatMode; interestTags: string[] }>({ mode: "VIDEO", interestTags: [] });
+  const lastOptsRef = useRef<SearchOptions>({ mode: "VIDEO", interestTags: [] });
   const rematchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const socketRef = useRef(getSocket());
@@ -107,19 +109,17 @@ export function useWebRTC() {
         setRematch(null);
         setCardOffer(null);
       }
-      socketRef.current.emit("join_queue", {
-        mode: lastOptsRef.current.mode,
-        interestTags: lastOptsRef.current.interestTags,
-      });
+      socketRef.current.emit("join_queue", lastOptsRef.current);
     },
     [teardownPeer, clearRematchTimer],
   );
 
   const start = useCallback(
-    async (opts: { mode: ChatMode; interestTags: string[] }) => {
+    async (opts: SearchOptions) => {
       lastOptsRef.current = opts;
       setStatus("searching");
       setMessages([]);
+      setWarning(null);
       try {
         await ensureLocalMedia(opts.mode);
       } catch {
@@ -128,7 +128,7 @@ export function useWebRTC() {
       }
       const socket = socketRef.current;
       if (!socket.connected) socket.connect();
-      socket.emit("join_queue", { mode: opts.mode, interestTags: opts.interestTags });
+      socket.emit("join_queue", opts);
     },
     [ensureLocalMedia],
   );
@@ -246,6 +246,10 @@ export function useWebRTC() {
       setShareCard(data.card);
     }
 
+    function onFilterDowngraded() {
+      setWarning("Not enough coins for that gender filter — searching without it this time.");
+    }
+
     function onConnectError() {
       setStatus("error");
     }
@@ -256,6 +260,7 @@ export function useWebRTC() {
     socket.on("session_ended", onSessionEnded);
     socket.on("moderation_flag", onModerationFlag);
     socket.on("share_card_ready", onShareCardReady);
+    socket.on("filter_downgraded", onFilterDowngraded);
     socket.on("connect_error", onConnectError);
 
     return () => {
@@ -265,6 +270,7 @@ export function useWebRTC() {
       socket.off("session_ended", onSessionEnded);
       socket.off("moderation_flag", onModerationFlag);
       socket.off("share_card_ready", onShareCardReady);
+      socket.off("filter_downgraded", onFilterDowngraded);
       socket.off("connect_error", onConnectError);
     };
   }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia, clearRematchTimer]);
