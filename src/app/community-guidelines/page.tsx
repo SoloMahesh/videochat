@@ -1,3 +1,5 @@
+import { AmbientBackground } from "@/components/AmbientBackground";
+
 export const metadata = { title: "Community Guidelines — Bounce" };
 
 const RULES = [
@@ -11,20 +13,23 @@ const RULES = [
 
 export default function GuidelinesPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-ink">
-      <p className="font-mono text-xs uppercase tracking-[0.12em] text-accent-ink">Keeping Bounce livable</p>
-      <h1 className="mt-3 font-display text-3xl font-bold">Community Guidelines</h1>
-      <p className="mt-4 text-sm text-ink-muted">
-        Automated screening and reports enforce these in real time. Breaking one gets you a warning first, then an
-        escalating ban — see <code className="font-mono">docs/PRD.md</code> §6 for the exact ladder.
-      </p>
-      <ul className="mt-8 flex flex-col gap-3">
-        {RULES.map((rule) => (
-          <li key={rule} className="glass rounded-xl2 px-5 py-4 text-sm text-ink-muted">
-            {rule}
-          </li>
-        ))}
-      </ul>
-    </main>
+    <>
+      <AmbientBackground />
+      <main className="mx-auto max-w-2xl px-6 py-16 text-ink">
+        <p className="font-mono text-xs uppercase tracking-[0.12em] text-accent-ink">Keeping Bounce livable</p>
+        <h1 className="mt-3 font-display text-3xl font-bold">Community Guidelines</h1>
+        <p className="mt-4 text-sm text-ink-muted">
+          Automated screening and reports enforce these in real time. Breaking one gets you a warning first, then an
+          escalating ban — see <code className="font-mono">docs/PRD.md</code> §6 for the exact ladder.
+        </p>
+        <ul className="mt-8 flex flex-col gap-3">
+          {RULES.map((rule) => (
+            <li key={rule} className="card px-5 py-4 text-sm text-ink-muted">
+              {rule}
+            </li>
+          ))}
+        </ul>
+      </main>
+    </>
   );
 }

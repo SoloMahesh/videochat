@@ -19,10 +19,7 @@ export default function SignInPage() {
           synced.
         </p>
 
-        <button
-          onClick={() => signIn("google")}
-          className="mt-6 rounded-full border border-line px-6 py-3 text-sm font-semibold text-ink hover:border-accent"
-        >
+        <button onClick={() => signIn("google")} className="btn btn-subtle btn-md mt-6">
           Continue with Google
         </button>
 
@@ -31,7 +28,7 @@ export default function SignInPage() {
         </div>
 
         {sent ? (
-          <p className="rounded-xl2 border border-accent2/40 bg-accent2-soft px-4 py-3 text-center text-sm text-accent2">
+          <p className="rounded-xl2 bg-accent2-soft px-4 py-3 text-center text-sm text-accent2 shadow-flat">
             Check your email for a sign-in link.
           </p>
         ) : (
@@ -49,9 +46,9 @@ export default function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="rounded-full border border-line bg-surface-2 px-4 py-3 text-sm focus:border-accent focus:outline-none"
+              className="input2"
             />
-            <button type="submit" className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white">
+            <button type="submit" className="btn btn-primary btn-md">
               Email me a sign-in link
             </button>
           </form>

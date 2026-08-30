@@ -58,7 +58,7 @@ export default function ProfilePage() {
       <AmbientBackground />
       <header className="mx-auto flex max-w-2xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </Link>
         {saved && <span className="font-mono text-xs text-accent2">Saved</span>}
@@ -68,15 +68,15 @@ export default function ProfilePage() {
         <p className="font-mono text-xs uppercase tracking-[0.12em] text-accent-ink">Your profile</p>
         <h1 className="mt-3 font-display text-2xl font-bold">Nothing required — Bounce works fine without this</h1>
 
-        <div className="glass mt-8 rounded-xl2 p-6">
+        <div className="card mt-8 p-6">
           <label className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Avatar</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {AVATARS.map((a) => (
               <button
                 key={a}
                 onClick={() => patch({ avatar: a })}
-                className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${
-                  profile.avatar === a ? "border-accent bg-accent-soft" : "border-line hover:border-accent"
+                className={`flex h-11 w-11 items-center justify-center rounded-full text-xl transition ${
+                  profile.avatar === a ? "bg-accent-soft shadow-inset-sm" : "shadow-flat hover:shadow-extrude-sm"
                 }`}
               >
                 {a}
@@ -91,7 +91,7 @@ export default function ProfilePage() {
             onBlur={() => patch({ name })}
             maxLength={24}
             placeholder="Anonymous"
-            className="mt-2 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+            className="input2 mt-2"
           />
 
           <label className="mt-6 block font-mono text-[10px] uppercase tracking-wide text-ink-muted">
@@ -102,7 +102,7 @@ export default function ProfilePage() {
             onChange={(e) => setTagsInput(e.target.value)}
             onBlur={() => patch({ defaultInterestTags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean) })}
             placeholder="music, hiking, games"
-            className="mt-2 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+            className="input2 mt-2"
           />
           <p className="mt-2 text-xs text-ink-muted">Pre-fills the interests box on the chat page.</p>
         </div>

@@ -17,7 +17,7 @@ export function LegalPage({
       <AmbientBackground />
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold text-ink">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </Link>
         <nav className="flex gap-4 font-mono text-xs text-ink-muted">

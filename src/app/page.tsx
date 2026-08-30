@@ -43,12 +43,12 @@ export default function LandingPage() {
       </Suspense>
       {state.status === "ready" && !state.session.ageConfirmed && <AgeGate onConfirm={confirmAge} />}
 
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+      <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-6">
         <div className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </div>
-        <nav className="flex items-center gap-6 font-mono text-xs uppercase tracking-wide text-ink-muted">
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
           <Link href="/community-guidelines" className="hover:text-ink">
             Guidelines
           </Link>
@@ -72,7 +72,7 @@ export default function LandingPage() {
               Sign in
             </Link>
           )}
-          <Link href="/chat" className="rounded-full border border-line px-4 py-2 text-ink hover:border-accent">
+          <Link href="/chat" className="btn btn-subtle btn-sm">
             Start
           </Link>
         </nav>
@@ -89,10 +89,7 @@ export default function LandingPage() {
         </p>
 
         <div className="mt-9 flex items-center gap-4">
-          <Link
-            href="/chat"
-            className="rounded-full bg-accent px-8 py-4 font-semibold text-white shadow-lg shadow-accent/20 transition hover:brightness-110"
-          >
+          <Link href="/chat" className="btn btn-primary btn-lg">
             Start chatting →
           </Link>
           <span className="font-mono text-xs text-ink-muted">
@@ -104,7 +101,7 @@ export default function LandingPage() {
 
         <div className="mt-20 grid gap-4 sm:grid-cols-3">
           {HIGHLIGHTS.map((h) => (
-            <div key={h.k} className="glass rounded-xl2 p-6">
+            <div key={h.k} className="card p-6">
               <span className="font-mono text-xs text-accent-ink">{h.k}</span>
               <h3 className="mt-3 font-display text-lg font-bold">{h.title}</h3>
               <p className="mt-2 text-sm text-ink-muted">{h.body}</p>

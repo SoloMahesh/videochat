@@ -12,8 +12,8 @@ function PurchaseNotice() {
   if (!purchase) return null;
   return (
     <div
-      className={`mb-6 rounded-xl2 border px-4 py-3 text-center text-sm ${
-        purchase === "success" ? "border-accent2/40 bg-accent2-soft text-accent2" : "border-line text-ink-muted"
+      className={`mb-6 rounded-xl2 px-4 py-3 text-center text-sm shadow-flat ${
+        purchase === "success" ? "bg-accent2-soft text-accent2" : "text-ink-muted"
       }`}
     >
       {purchase === "success" ? "Purchase complete — your balance is updated." : "Checkout cancelled."}
@@ -44,7 +44,7 @@ export default function CoinsPage() {
       <AmbientBackground />
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </Link>
       </header>
@@ -58,14 +58,14 @@ export default function CoinsPage() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {COIN_PACKS.map((pack) => (
-            <div key={pack.id} className="glass flex flex-col rounded-xl2 p-6 text-center">
+            <div key={pack.id} className="card flex flex-col p-6 text-center">
               <span className="font-mono text-xs uppercase tracking-wide text-accent-ink">{pack.label}</span>
               <span className="mt-3 font-display text-3xl font-extrabold">{pack.coins}</span>
               <span className="text-xs text-ink-muted">coins</span>
               <button
                 onClick={() => buy(pack.id)}
                 disabled={loadingId === pack.id}
-                className="mt-6 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                className="btn btn-primary btn-sm mt-6 disabled:opacity-50"
               >
                 {loadingId === pack.id ? "Redirecting…" : `$${pack.priceUsd.toFixed(2)}`}
               </button>

@@ -21,7 +21,7 @@ export default function FriendsPage() {
       <AmbientBackground />
       <header className="mx-auto flex max-w-2xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </Link>
         <Link href="/chat" className="font-mono text-xs text-ink-muted hover:text-ink">
@@ -39,16 +39,12 @@ export default function FriendsPage() {
         <div className="mt-8 flex flex-col gap-2">
           {friends === null && <p className="text-sm text-ink-muted">Loading…</p>}
           {friends?.length === 0 && (
-            <p className="glass rounded-xl2 p-6 text-center text-sm text-ink-muted">
+            <p className="card p-6 text-center text-sm text-ink-muted">
               No friends yet — the option to add someone shows up after a chat ends.
             </p>
           )}
           {friends?.map((f) => (
-            <Link
-              key={f.id}
-              href={`/friends/${f.id}`}
-              className="glass flex items-center gap-3 rounded-xl2 p-4 transition hover:border-accent"
-            >
+            <Link key={f.id} href={`/friends/${f.id}`} className="card-interactive flex items-center gap-3 p-4">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-lg">
                 {f.image ?? "👤"}
               </span>

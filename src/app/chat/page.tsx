@@ -81,7 +81,7 @@ export default function ChatPage() {
 
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold">
-          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_rgba(255,86,48,0.14)]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_4px_var(--color-hero-soft)]" />
           Bounce
         </Link>
         <Link href="/coins" className="font-mono text-xs text-ink-muted hover:text-ink">
@@ -91,7 +91,7 @@ export default function ChatPage() {
 
       <main className="mx-auto max-w-4xl px-6 pb-24">
         {rtc.status === "idle" && (
-          <div className="glass mx-auto max-w-md rounded-xl2 p-8 animate-fade-in">
+          <div className="card mx-auto max-w-md p-8 animate-fade-in">
             <h1 className="font-display text-2xl font-bold">Ready when you are</h1>
             <p className="mt-2 text-sm text-ink-muted">Pick a mode, add a few interests if you want, then bounce in.</p>
 
@@ -100,8 +100,8 @@ export default function ChatPage() {
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`flex-1 rounded-full border px-4 py-2 text-sm font-medium transition ${
-                    mode === m ? "border-accent bg-accent-soft text-accent-ink" : "border-line text-ink-muted hover:text-ink"
+                  className={`btn btn-sm flex-1 ${
+                    mode === m ? "bg-accent-soft text-accent-ink shadow-inset-sm" : "btn-ghost"
                   }`}
                 >
                   {m === "VIDEO" ? "Video" : "Text only"}
@@ -113,14 +113,14 @@ export default function ChatPage() {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="interests, comma, separated"
-              className="mt-4 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+              className="input2 mt-4"
             />
 
             <input
               value={languageInput}
               onChange={(e) => setLanguageInput(e.target.value)}
               placeholder="language, e.g. en (optional)"
-              className="mt-3 w-full rounded-full border border-line bg-surface-2 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+              className="input2 mt-3"
             />
 
             <div className="mt-4 grid grid-cols-2 gap-3 text-left">
@@ -129,7 +129,7 @@ export default function ChatPage() {
                 <select
                   value={state.session.gender ?? ""}
                   onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "OTHER")}
-                  className="mt-1 w-full rounded-full border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                  className="input2 mt-1 h-9 text-sm"
                 >
                   <option value="" disabled>
                     Choose
@@ -146,7 +146,7 @@ export default function ChatPage() {
                 <select
                   value={desiredGender}
                   onChange={(e) => setDesiredGender(e.target.value as GenderFilter)}
-                  className="mt-1 w-full rounded-full border border-line bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                  className="input2 mt-1 h-9 text-sm"
                 >
                   <option value="ANY">Anyone</option>
                   <option value="MALE">Male</option>
@@ -165,7 +165,7 @@ export default function ChatPage() {
                   desiredGender,
                 })
               }
-              className="mt-6 w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
+              className="btn btn-primary btn-md mt-6 w-full"
             >
               Start
             </button>
@@ -174,7 +174,7 @@ export default function ChatPage() {
         )}
 
         {rtc.status === "searching" && (
-          <div className="glass mx-auto max-w-md rounded-xl2 p-8 text-center animate-fade-in">
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
             <p className="font-mono text-sm uppercase tracking-wide text-accent-ink animate-pulse">Searching…</p>
             <p className="mt-2 text-sm text-ink-muted">Looking for someone to bounce with.</p>
             {rtc.warning && <p className="mt-2 text-xs text-accent-ink">{rtc.warning}</p>}
@@ -182,7 +182,7 @@ export default function ChatPage() {
               <button
                 onClick={rtc.requestRematch}
                 disabled={rtc.rematch.requestedByMe}
-                className="mt-4 w-full rounded-full border border-accent bg-accent-soft px-5 py-2 text-sm font-medium text-accent-ink transition disabled:opacity-60"
+                className="btn btn-sm mt-4 w-full bg-accent-soft text-accent-ink shadow-inset-sm disabled:opacity-60"
               >
                 {rtc.rematch.requestedByMe ? "Waiting for them to bounce back too…" : "Bounce back to that last person?"}
               </button>
@@ -191,7 +191,7 @@ export default function ChatPage() {
               <button
                 onClick={rtc.requestShareCard}
                 disabled={rtc.cardOffer.requestedByMe}
-                className="mt-2 w-full rounded-full border border-line px-5 py-2 text-sm font-medium text-ink-muted transition hover:text-ink disabled:opacity-60"
+                className="btn btn-ghost btn-sm mt-2 w-full disabled:opacity-60"
               >
                 {rtc.cardOffer.requestedByMe ? "Waiting for them to agree…" : "Get a shareable card of that chat?"}
               </button>
@@ -200,7 +200,7 @@ export default function ChatPage() {
               <button
                 onClick={rtc.requestFriend}
                 disabled={rtc.friendOffer.requestedByMe}
-                className="mt-2 w-full rounded-full border border-line px-5 py-2 text-sm font-medium text-ink-muted transition hover:text-ink disabled:opacity-60"
+                className="btn btn-ghost btn-sm mt-2 w-full disabled:opacity-60"
               >
                 {rtc.friendOffer.requestedByMe ? "Waiting for them to add you too…" : "Add them as a friend?"}
               </button>
@@ -214,7 +214,7 @@ export default function ChatPage() {
                 .
               </p>
             )}
-            <button onClick={rtc.stop} className="mt-3 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+            <button onClick={rtc.stop} className="btn btn-ghost btn-sm mt-3">
               Cancel
             </button>
             {!state.session.subscribed && <AdSlot />}
@@ -222,17 +222,17 @@ export default function ChatPage() {
         )}
 
         {rtc.status === "banned" && (
-          <div className="glass mx-auto max-w-md rounded-xl2 p-8 text-center animate-fade-in">
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
             <p className="font-display text-lg font-bold">You&rsquo;ve been banned</p>
             <p className="mt-2 text-sm text-ink-muted">This device was reported and confirmed for a guideline violation.</p>
           </div>
         )}
 
         {rtc.status === "error" && (
-          <div className="glass mx-auto max-w-md rounded-xl2 p-8 text-center animate-fade-in">
+          <div className="card mx-auto max-w-md p-8 text-center animate-fade-in">
             <p className="font-display text-lg font-bold">Couldn&rsquo;t connect</p>
             <p className="mt-2 text-sm text-ink-muted">Check your camera/mic permissions and try again.</p>
-            <button onClick={rtc.stop} className="mt-6 rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+            <button onClick={rtc.stop} className="btn btn-ghost btn-sm mt-6">
               Back
             </button>
           </div>
@@ -241,7 +241,7 @@ export default function ChatPage() {
         {rtc.status === "connected" && (
           <div className="animate-fade-in">
             {rtc.warning && (
-              <div className="mb-4 rounded-xl2 border border-accent/40 bg-accent-soft px-4 py-2 text-center text-sm text-accent-ink">
+              <div className="mb-4 rounded-xl2 bg-accent-soft px-4 py-2 text-center text-sm text-accent-ink shadow-flat">
                 {rtc.warning}
               </div>
             )}
@@ -253,7 +253,7 @@ export default function ChatPage() {
             )}
 
             <div className="grid gap-4 sm:grid-cols-[2fr,1fr]">
-              <div className="relative aspect-video overflow-hidden rounded-xl2 border border-line bg-surface-2">
+              <div className="relative aspect-video overflow-hidden rounded-xl2 bg-surface-2 shadow-flat">
                 {mode === "VIDEO" ? (
                   <video
                     ref={rtc.remoteVideoRef}
@@ -267,7 +267,7 @@ export default function ChatPage() {
                   <div className="flex h-full items-center justify-center font-mono text-xs text-ink-muted">text mode</div>
                 )}
                 {rtc.safeMode?.active && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-paper/40 px-6 text-center">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color-mix(in_srgb,var(--color-bg)_40%,transparent)] px-6 text-center">
                     <p className="font-mono text-[11px] uppercase tracking-wide text-ink">Safe Mode</p>
                     <p className="max-w-xs text-sm text-ink">
                       One of you is new here, so video stays blurred until you both feel comfortable.
@@ -275,7 +275,7 @@ export default function ChatPage() {
                     <button
                       onClick={rtc.consentSafeMode}
                       disabled={rtc.safeMode.selfConsented}
-                      className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      className="btn btn-primary btn-sm disabled:opacity-60"
                     >
                       {rtc.safeMode.selfConsented
                         ? rtc.safeMode.peerConsented
@@ -291,12 +291,12 @@ export default function ChatPage() {
                     autoPlay
                     playsInline
                     muted
-                    className="absolute bottom-3 right-3 h-24 w-32 rounded-lg border border-line object-cover"
+                    className="absolute bottom-3 right-3 h-24 w-32 rounded-lg object-cover shadow-extrude-sm"
                   />
                 )}
               </div>
 
-              <div className="flex h-[min(60vh,420px)] flex-col rounded-xl2 border border-line bg-surface">
+              <div className="flex h-[min(60vh,420px)] flex-col rounded-xl2 bg-surface shadow-flat">
                 <div className="flex-1 overflow-y-auto p-3">
                   {rtc.messages.map((m, i) => (
                     <div key={i} className={`mb-2 flex ${m.from === "me" ? "justify-end" : "justify-start"}`}>
@@ -322,9 +322,9 @@ export default function ChatPage() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder="Say something…"
-                    className="flex-1 rounded-full border border-line bg-surface-2 px-3 py-2 text-sm focus:border-accent focus:outline-none"
+                    className="input2 h-10 flex-1"
                   />
-                  <button type="submit" className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white">
+                  <button type="submit" className="btn btn-primary btn-sm">
                     Send
                   </button>
                 </form>
@@ -332,23 +332,23 @@ export default function ChatPage() {
             </div>
 
             <div className="mt-4 flex justify-center gap-3">
-              <button onClick={rtc.skip} className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white hover:brightness-110">
+              <button onClick={rtc.skip} className="btn btn-primary btn-md">
                 Next →
               </button>
               <button
                 onClick={() => setShowReport(true)}
-                className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink-muted hover:text-ink"
+                className="btn btn-ghost btn-md"
               >
                 Report
               </button>
               <button
                 onClick={rtc.block}
                 title="Never match this person again — no report filed"
-                className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink-muted hover:text-ink"
+                className="btn btn-ghost btn-md"
               >
                 Block
               </button>
-              <button onClick={rtc.stop} className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink-muted hover:text-ink">
+              <button onClick={rtc.stop} className="btn btn-ghost btn-md">
                 Stop
               </button>
             </div>
@@ -358,7 +358,7 @@ export default function ChatPage() {
       </main>
 
       {showReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper/90 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-bg)_90%,transparent)] px-4 backdrop-blur-sm">
           <div className="glass w-full max-w-sm rounded-xl2 p-6 animate-fade-in">
             <h2 className="font-display text-lg font-bold">Report this person</h2>
             <div className="mt-4 flex flex-col gap-2">
@@ -369,13 +369,13 @@ export default function ChatPage() {
                     rtc.report(r.value);
                     setShowReport(false);
                   }}
-                  className="rounded-xl2 border border-line px-4 py-3 text-left text-sm text-ink hover:border-accent hover:bg-accent-soft"
+                  className="rounded-xl2 bg-surface-2 px-4 py-3 text-left text-sm text-ink shadow-flat transition hover:bg-accent-soft hover:shadow-extrude-sm"
                 >
                   {r.label}
                 </button>
               ))}
             </div>
-            <button onClick={() => setShowReport(false)} className="mt-4 text-sm text-ink-muted hover:text-ink">
+            <button onClick={() => setShowReport(false)} className="btn btn-ghost btn-sm mt-4">
               Cancel
             </button>
           </div>
@@ -383,7 +383,7 @@ export default function ChatPage() {
       )}
 
       {rtc.shareCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper/90 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-bg)_90%,transparent)] px-4 backdrop-blur-sm">
           <div className="glass w-full max-w-sm overflow-hidden rounded-xl2 animate-fade-in">
             <div className="bg-gradient-to-br from-accent to-accent2 p-8 text-center text-white">
               <span className="text-5xl">{rtc.shareCard.vibe}</span>
@@ -396,10 +396,10 @@ export default function ChatPage() {
             <div className="p-4 text-center">
               <p className="text-xs text-ink-muted">Screenshot this to share — no faces, no names, just the moment.</p>
               <div className="mt-3 flex justify-center gap-2">
-                <button onClick={shareTheCard} className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white">
+                <button onClick={shareTheCard} className="btn btn-primary btn-sm">
                   {shareCopied ? "Copied!" : "Share"}
                 </button>
-                <button onClick={rtc.dismissShareCard} className="rounded-full border border-line px-5 py-2 text-sm text-ink-muted hover:text-ink">
+                <button onClick={rtc.dismissShareCard} className="btn btn-ghost btn-sm">
                   Close
                 </button>
               </div>

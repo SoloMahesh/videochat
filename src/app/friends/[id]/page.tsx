@@ -88,7 +88,7 @@ export default function DmThreadPage() {
       </header>
 
       <main className="mx-auto flex max-w-2xl flex-col px-6 pb-6" style={{ height: "calc(100vh - 100px)" }}>
-        <div className="glass flex-1 overflow-y-auto rounded-xl2 p-4">
+        <div className="card flex-1 overflow-y-auto p-4">
           {messages.map((m) => (
             <div key={m.id} className={`mb-2 flex ${m.senderId === friendId ? "justify-start" : "justify-end"}`}>
               <span
@@ -109,13 +109,8 @@ export default function DmThreadPage() {
           }}
           className="mt-3 flex gap-2"
         >
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message…"
-            className="flex-1 rounded-full border border-line bg-surface-2 px-4 py-3 text-sm focus:border-accent focus:outline-none"
-          />
-          <button type="submit" className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Message…" className="input2 flex-1" />
+          <button type="submit" className="btn btn-primary btn-md">
             Send
           </button>
         </form>
