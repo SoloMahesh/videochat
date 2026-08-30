@@ -1,5 +1,9 @@
 # Go-live checklist
 
+An interactive, checkable version of this same list lives at
+`docs/go-live-checklist.html` — open it in a browser and it saves your
+progress locally as you check items off.
+
 Everything code-shaped is done and verified (see `docs/ROADMAP.md` Phase 4).
 What's left is entirely things only you can do — your accounts, your
 credentials, your legal/business decisions. This is the complete, ordered

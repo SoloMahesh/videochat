@@ -1,0 +1,664 @@
+<title>Bounce Go-Live Checklist</title>
+<meta name="description" content="Ordered setup checklist for launching Bounce to production." />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F5F6F1;
+    --surface: #FFFFFF;
+    --surface-2: #ECEFE6;
+    --ink: #14170F;
+    --ink-muted: #5B6355;
+    --line: #DBDFD2;
+    --accent: #E14A28;
+    --accent-soft: rgba(225,74,40,0.10);
+    --accent2: #0B7C79;
+    --accent2-soft: rgba(11,124,121,0.10);
+    --warn: #9C6B0B;
+    --warn-soft: rgba(156,107,11,0.12);
+    --shadow: 0 1px 2px rgba(20,23,15,0.04), 0 8px 24px -12px rgba(20,23,15,0.12);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1210;
+      --surface: #171B17;
+      --surface-2: #1F241E;
+      --ink: #EDEFE9;
+      --ink-muted: #9BA396;
+      --line: #2B3026;
+      --accent: #FF5630;
+      --accent-soft: rgba(255,86,48,0.14);
+      --accent2: #14A6A2;
+      --accent2-soft: rgba(20,166,162,0.16);
+      --warn: #E0A233;
+      --warn-soft: rgba(224,162,51,0.14);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1210;
+    --surface: #171B17;
+    --surface-2: #1F241E;
+    --ink: #EDEFE9;
+    --ink-muted: #9BA396;
+    --line: #2B3026;
+    --accent: #FF5630;
+    --accent-soft: rgba(255,86,48,0.14);
+    --accent2: #14A6A2;
+    --accent2-soft: rgba(20,166,162,0.16);
+    --warn: #E0A233;
+    --warn-soft: rgba(224,162,51,0.14);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Bricolage Grotesque", system-ui, sans-serif; text-wrap: balance; margin: 0; }
+  code, .mono, .cmd, .progress-count { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  a { color: var(--accent2); }
+
+  .shell {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+
+  /* --- Header / progress --- */
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .top-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .top-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .top-title span { color: var(--accent); }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 999px;
+    transition: width 0.35s ease;
+  }
+  .progress-count {
+    font-size: 12px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  /* --- Hero --- */
+  .hero {
+    padding: 44px 0 28px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: var(--accent2-soft);
+    border: 1px solid color-mix(in srgb, var(--accent2) 35%, transparent);
+    padding: 5px 10px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 38px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .hero p {
+    margin-top: 12px;
+    color: var(--ink-muted);
+    font-size: 15.5px;
+    max-width: 62ch;
+  }
+  .hero-note {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .hero-note .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent2);
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .hero-note p { margin: 0; color: var(--ink); font-size: 13.5px; }
+  .hero-note strong { color: var(--ink); }
+
+  /* --- Section cards --- */
+  .step {
+    display: flex;
+    gap: 16px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+  }
+  .step:last-of-type { border-bottom: 1px solid var(--line); }
+
+  .step-marker {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 30px;
+  }
+  .step-num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-muted);
+    padding-top: 2px;
+  }
+  .step-check {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .step-check:hover { border-color: var(--accent2); }
+  .step-check:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+  .step-check svg { width: 13px; height: 13px; }
+  .step.done .step-check {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: var(--surface);
+  }
+
+  .step-body { flex: 1; min-width: 0; }
+  .step-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .step-head h2 { font-size: 17px; font-weight: 700; }
+  .step.done .step-head h2 { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--line); }
+
+  .badge {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .badge.required { color: var(--accent); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .badge.optional { color: var(--warn); background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+
+  .step-body p { margin: 8px 0; color: var(--ink); }
+  .step-body p.muted { color: var(--ink-muted); font-size: 13.5px; }
+  .step-body ul, .step-body ol { margin: 8px 0; padding-left: 20px; }
+  .step-body li { margin: 5px 0; }
+  .step-body strong { color: var(--ink); }
+
+  .field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+
+  .codeblock {
+    position: relative;
+    margin: 10px 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .codeblock pre {
+    margin: 0;
+    padding: 12px 44px 12px 14px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    white-space: pre;
+    color: var(--ink);
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .copy-btn:hover { color: var(--ink); border-color: var(--accent2); }
+  .copy-btn.copied { color: var(--accent2); border-color: var(--accent2); }
+
+  .checklist {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .checklist li::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  footer.done-banner {
+    margin-top: 32px;
+    text-align: center;
+    padding: 28px 20px;
+    border-radius: var(--radius);
+    background: var(--accent2-soft);
+    border: 1px solid color-mix(in srgb, var(--accent2) 35%, transparent);
+    display: none;
+  }
+  footer.done-banner.show { display: block; }
+  footer.done-banner h3 { color: var(--accent2); font-size: 18px; }
+  footer.done-banner p { color: var(--ink-muted); margin-top: 6px; font-size: 13.5px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress-fill { transition: none; }
+  }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-title">Bounce <span>go-live</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-count" id="progressCount">0 / 0</div>
+  </div>
+</header>
+
+<div class="shell">
+  <section class="hero">
+    <span class="eyebrow">Production launch checklist</span>
+    <h1>Everything left before Bounce goes live</h1>
+    <p>Every code-shaped piece of the app is built and verified. What remains below is entirely your accounts, credentials, and judgment calls — a VPS, a domain, live Stripe keys, a lawyer's eyes on the legal pages, and so on. Work top to bottom; later steps depend on earlier ones.</p>
+    <div class="hero-note">
+      <div class="dot"></div>
+      <p><strong>Your progress is saved in this browser</strong> as you check items off — reopen this page any time and pick up where you left off. Nothing is sent anywhere; it's stored only on this device.</p>
+    </div>
+  </section>
+
+  <div id="steps"></div>
+
+  <footer class="done-banner" id="doneBanner">
+    <h3>All steps checked off</h3>
+    <p>Run the smoke test in step 17 against the real production URL once more before telling anyone the link.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var steps = [
+    {
+      title: "Pick your domain and brand name",
+      badge: "required",
+      body: [
+        "The working name is “Bounce” — buy the domain now, you'll need it for almost every step below. Backup names if it's taken: Flikk, Nextly.",
+        "<p class=\"muted\">Landing on a different name is a later, optional cleanup (display strings in the layout, README, legal pages) — it doesn't block launch.</p>"
+      ]
+    },
+    {
+      title: "Provision the VPS and point DNS at it",
+      badge: "required",
+      body: [
+        "<ul><li>Provision a VPS — 2 vCPU / 4&nbsp;GB RAM is enough at launch scale. Hetzner, DigitalOcean, or Vultr all work.</li><li>Point your domain's DNS (A record) at the VPS's public IP.</li><li>Put Cloudflare in front (free tier). Leave it in <span class=\"field\">DNS only</span> mode until TLS is issued in step 7, then switch to proxied.</li></ul>"
+      ]
+    },
+    {
+      title: "Install Docker on the VPS",
+      badge: "required",
+      commands: ["curl -fsSL https://get.docker.com | sudo sh", "sudo usermod -aG docker $USER   # log out and back in after this", "docker compose version"]
+    },
+    {
+      title: "Clone the repo and generate production secrets",
+      badge: "required",
+      body: [
+        "<div class=\"codeblock-label\">Clone and start from the example env:</div>"
+      ],
+      commands: ["git clone <your-repo-url> bounce && cd bounce", "cp .env.example .env"],
+      body2: [
+        "Generate a strong random value for each of these and paste it into <span class=\"field\">.env</span>:"
+      ],
+      commands2: [
+        "openssl rand -base64 32   # SESSION_SECRET",
+        "openssl rand -base64 32   # IP_HASH_SALT",
+        "openssl rand -base64 32   # ADMIN_TOKEN — your /admin login, save it in a password manager",
+        "openssl rand -base64 32   # NEXTAUTH_SECRET",
+        "openssl rand -base64 32   # POSTGRES_PASSWORD"
+      ],
+      body3: [
+        "Also set in <span class=\"field\">.env</span>: <span class=\"field\">APP_URL=https://yourdomain.com</span> (real domain, feeds Stripe redirects, NextAuth callbacks, and social share metadata), <span class=\"field\">NEXTAUTH_URL</span> to the same value, and <span class=\"field\">NODE_ENV=production</span>.",
+        "<p class=\"muted\">Leave GOOGLE_CLIENT_ID/SECRET and EMAIL_SERVER/FROM blank if you're skipping steps 10–11 — guest mode and Stripe both work fine without them.</p>"
+      ]
+    },
+    {
+      title: "TURN server (coturn) credentials",
+      badge: "required",
+      body: [
+        "Users behind restrictive NATs/firewalls can't form a direct peer-to-peer connection — coturn relays their call instead. Without this, those users' calls just fail.",
+        "<ol><li>In <span class=\"field\">docker/coturn/turnserver.conf</span>: replace <span class=\"field\">CHANGE_ME_TURN_PASSWORD</span> with a strong password, and <span class=\"field\">realm=bounce.example.com</span> with your real domain.</li><li>Uncomment <span class=\"field\">external-ip=</span> and set it to the VPS's public IP.</li></ol>",
+        "In <span class=\"field\">.env</span>:"
+      ],
+      commands: [
+        "NEXT_PUBLIC_TURN_URL=turn:yourdomain.com:3478",
+        "NEXT_PUBLIC_TURN_USERNAME=bounce",
+        "NEXT_PUBLIC_TURN_CREDENTIAL=<the password from turnserver.conf>"
+      ]
+    },
+    {
+      title: "nginx config",
+      badge: "required",
+      body: ["Edit <span class=\"field\">docker/nginx/nginx.conf</span> and replace every <span class=\"field\">bounce.example.com</span> with your real domain."]
+    },
+    {
+      title: "First boot and TLS",
+      badge: "required",
+      commands: ["docker compose up -d --build"],
+      body2: ["Wait for it to come up (<span class=\"field\">docker compose logs -f app</span>), then issue a real TLS certificate:"],
+      commands2: [
+        "docker run --rm -v $(pwd)/docker/nginx/certbot:/var/www/certbot \\",
+        "  -v $(pwd)/docker/nginx/ssl:/etc/letsencrypt \\",
+        "  certbot/certbot certonly --webroot -w /var/www/certbot \\",
+        "  -d yourdomain.com --email you@yourdomain.com --agree-tos --no-eff-email"
+      ],
+      body3: [
+        "Uncomment the HTTPS <span class=\"field\">server</span> block in <span class=\"field\">nginx.conf</span> (the file has a ready-made template), then:"
+      ],
+      commands3: ["docker compose restart nginx"],
+      body4: ["Add a monthly cron job to renew before the 90-day cert expires:"],
+      commands4: ["0 3 1 * * cd /path/to/bounce && docker run --rm -v $(pwd)/docker/nginx/certbot:/var/www/certbot -v $(pwd)/docker/nginx/ssl:/etc/letsencrypt certbot/certbot renew --quiet && docker compose restart nginx"]
+    },
+    {
+      title: "Apply the database schema",
+      badge: "required",
+      commands: ["docker compose exec app npx prisma migrate deploy"]
+    },
+    {
+      title: "Stripe — live payments",
+      badge: "required",
+      body: [
+        "The checkout code builds prices dynamically — you do <strong>not</strong> need to create Products/Prices in the Stripe dashboard.",
+        "<ol><li>Create a Stripe account (or switch to Live mode) at dashboard.stripe.com.</li><li>Copy the live secret key into <span class=\"field\">.env</span> as <span class=\"field\">STRIPE_SECRET_KEY</span> (starts <span class=\"field\">sk_live_</span>).</li><li>Developers → Webhooks → Add endpoint: <span class=\"field\">https://yourdomain.com/api/payments/webhook</span>, events <span class=\"field\">checkout.session.completed</span>, <span class=\"field\">customer.subscription.updated</span>, <span class=\"field\">customer.subscription.deleted</span>. Copy the signing secret into <span class=\"field\">STRIPE_WEBHOOK_SECRET</span>.</li><li>Restart: <span class=\"field\">docker compose up -d</span>.</li></ol>",
+        "<p class=\"muted\"><strong>Test with a real card before announcing launch</strong> — buy the smallest coin pack, confirm coins land, check <span class=\"field\">docker compose logs app</span> if they don't.</p>"
+      ]
+    },
+    {
+      title: "Google sign-in",
+      badge: "optional",
+      body: [
+        "Guest mode and Stripe both work without this — skip for a faster launch, add later if you want.",
+        "<ol><li>console.cloud.google.com → new project → OAuth consent screen → Credentials → OAuth client ID (Web application).</li><li>Authorized redirect URI: <span class=\"field\">https://yourdomain.com/api/auth/callback/google</span></li><li>Put the client ID/secret into <span class=\"field\">.env</span> as <span class=\"field\">GOOGLE_CLIENT_ID</span> / <span class=\"field\">GOOGLE_CLIENT_SECRET</span>, restart.</li></ol>"
+      ]
+    },
+    {
+      title: "Email magic-link sign-in",
+      badge: "optional",
+      body: [
+        "Also optional — skip if Google sign-in + guest mode covers launch.",
+        "<ol><li>Get SMTP credentials (Resend, Postmark, SES, or a Gmail app password for low volume).</li><li>Set <span class=\"field\">EMAIL_SERVER</span> and <span class=\"field\">EMAIL_FROM</span> in <span class=\"field\">.env</span>, restart.</li></ol>"
+      ]
+    },
+    {
+      title: "Legal — fill in the placeholders, get a real review",
+      badge: "required",
+      body: [
+        "<span class=\"field\">/terms</span> and <span class=\"field\">/privacy</span> are launch-ready drafts, not filler — but every highlighted bracketed field is a real fact only you can supply:",
+        "<ul><li>Your company/legal name and business address or jurisdiction</li><li>Support, DMCA, privacy, and security contact emails</li><li>Governing-law jurisdiction and the liability cap you're comfortable with</li><li>Third-party processors you actually use, and the region your server is in</li></ul>",
+        "<p><strong>Then have an actual lawyer review both pages</strong> before real users see them — a strong draft is not a compliance sign-off, especially given the video-chat-with-strangers nature of the product (COPPA/GDPR/CCPA exposure).</p>"
+      ]
+    },
+    {
+      title: "NCMEC CyberTipline account",
+      badge: "required",
+      body: [
+        "If you'll have US users: operators of platforms like this have a legal obligation to report suspected CSAM to NCMEC. The app already tags reports as suspected-minor and skips them straight to a permanent ban — the reporting itself is manual.",
+        "<ol><li>Register at report.cybertip.org as an Electronic Service Provider.</li><li>Write down, in your own ops notes, the exact steps for when a flagged report comes in via <span class=\"field\">/admin</span> — before you need them under pressure.</li></ol>"
+      ]
+    },
+    {
+      title: "Ad network",
+      badge: "optional",
+      body: [
+        "The ad slot is a labeled placeholder — nothing shows until you wire in a real network. Stranger-video-chat is a narrow niche; many mainstream networks (AdSense) won't accept this category, so budget time to find one that does. Once you have a snippet, swapping it in is a small, mechanical code change.",
+        "<p class=\"muted\">You can launch without this and add it once you have traffic to justify the search.</p>"
+      ]
+    },
+    {
+      title: "Backups",
+      badge: "required",
+      body: ["Already built and tested — encrypted nightly dumps with a working restore path. Minimum before launch:"],
+      commands: ["openssl rand -base64 32   # BACKUP_GPG_PASSPHRASE — save it in your password manager"],
+      body2: [
+        "<ol start=\"2\"><li>Set up an off-box storage bucket (Backblaze B2 or Cloudflare R2) and <span class=\"field\">rclone</span>; set <span class=\"field\">BACKUP_RCLONE_REMOTE</span> in <span class=\"field\">.env</span>.</li><li>Add the nightly cron line (full guide in <span class=\"field\">docs/BACKUPS.md</span>).</li><li>Run one restore drill before you trust it.</li></ol>"
+      ]
+    },
+    {
+      title: "Uptime monitoring",
+      badge: "required",
+      body: [
+        "Not built into the app — a healthy app can't tell you it's down.",
+        "<ol><li>Sign up at UptimeRobot or healthchecks.io — free tier is enough.</li><li>Add an HTTPS monitor on <span class=\"field\">https://yourdomain.com</span>, checked every 5 minutes, with an email/SMS alert on failure.</li></ol>"
+      ]
+    },
+    {
+      title: "Final smoke test — on the real production URL",
+      badge: "required",
+      checklist: [
+        "Homepage loads over HTTPS — padlock, no mixed-content warnings",
+        "Age gate accepts, guest session starts",
+        "Two separate browsers/devices match; video and text chat both work",
+        "Reporting one side lands a ban (check /admin with your ADMIN_TOKEN)",
+        "Smallest coin pack purchase completes with a real card",
+        "Bounce+ subscription completes and entitlement flips",
+        "/terms and /privacy show your real filled-in details, not placeholders",
+        "A nightly backup actually ran — check backups/ or your off-box bucket"
+      ]
+    }
+  ];
+
+  var stepsEl = document.getElementById("steps");
+  var STORAGE_KEY = "bounce-golive-progress-v1";
+  var state = {};
+  try {
+    state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  } catch (e) { state = {}; }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function codeBlock(lines) {
+    var text = lines.join("\n");
+    var div = document.createElement("div");
+    div.className = "codeblock";
+    var pre = document.createElement("pre");
+    pre.textContent = text;
+    var btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.type = "button";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      try {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = "Copied";
+          btn.classList.add("copied");
+          setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1400);
+        });
+      } catch (e) {}
+    });
+    div.appendChild(pre);
+    div.appendChild(btn);
+    return div;
+  }
+
+  var checkSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>';
+
+  steps.forEach(function (step, i) {
+    var id = "step-" + i;
+    var el = document.createElement("div");
+    el.className = "step" + (state[id] ? " done" : "");
+    el.id = id;
+
+    var marker = document.createElement("div");
+    marker.className = "step-marker";
+    var num = document.createElement("div");
+    num.className = "step-num";
+    num.textContent = String(i + 1).padStart(2, "0");
+    var check = document.createElement("button");
+    check.className = "step-check";
+    check.type = "button";
+    check.innerHTML = checkSvg;
+    check.setAttribute("aria-label", "Mark step " + (i + 1) + " done");
+    check.setAttribute("aria-pressed", state[id] ? "true" : "false");
+    check.addEventListener("click", function () {
+      state[id] = !state[id];
+      el.classList.toggle("done", state[id]);
+      check.setAttribute("aria-pressed", state[id] ? "true" : "false");
+      save();
+      updateProgress();
+    });
+    marker.appendChild(num);
+    marker.appendChild(check);
+
+    var body = document.createElement("div");
+    body.className = "step-body";
+    var head = document.createElement("div");
+    head.className = "step-head";
+    var h2 = document.createElement("h2");
+    h2.textContent = step.title;
+    var badge = document.createElement("span");
+    badge.className = "badge " + step.badge;
+    badge.textContent = step.badge;
+    head.appendChild(h2);
+    head.appendChild(badge);
+    body.appendChild(head);
+
+    (step.body || []).forEach(function (html) {
+      var p = document.createElement("div");
+      p.innerHTML = html;
+      body.appendChild(p);
+    });
+    if (step.commands) body.appendChild(codeBlock(step.commands));
+    (step.body2 || []).forEach(function (html) {
+      var p = document.createElement("div");
+      p.innerHTML = html;
+      body.appendChild(p);
+    });
+    if (step.commands2) body.appendChild(codeBlock(step.commands2));
+    (step.body3 || []).forEach(function (html) {
+      var p = document.createElement("div");
+      p.innerHTML = html;
+      body.appendChild(p);
+    });
+    if (step.commands3) body.appendChild(codeBlock(step.commands3));
+    (step.body4 || []).forEach(function (html) {
+      var p = document.createElement("div");
+      p.innerHTML = html;
+      body.appendChild(p);
+    });
+    if (step.commands4) body.appendChild(codeBlock(step.commands4));
+
+    if (step.checklist) {
+      var ul = document.createElement("ul");
+      ul.className = "checklist";
+      step.checklist.forEach(function (item) {
+        var li = document.createElement("li");
+        li.textContent = item;
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+
+    el.appendChild(marker);
+    el.appendChild(body);
+    stepsEl.appendChild(el);
+  });
+
+  var fill = document.getElementById("progressFill");
+  var count = document.getElementById("progressCount");
+  var banner = document.getElementById("doneBanner");
+
+  function updateProgress() {
+    var total = steps.length;
+    var done = 0;
+    for (var i = 0; i < total; i++) if (state["step-" + i]) done++;
+    fill.style.width = (total ? (done / total) * 100 : 0) + "%";
+    count.textContent = done + " / " + total;
+    banner.classList.toggle("show", done === total);
+  }
+
+  updateProgress();
+})();
+</script>
