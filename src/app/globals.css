@@ -2,21 +2,209 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKENS — Soft Extrusion system, Slate Cyan palette.
+   Dark is the brand default; .light overrides every color token.
+   Structural tokens (shadows are read straight into Tailwind's
+   boxShadow scale from these same variables — see tailwind.config.ts.
+   ============================================================ */
+:root {
+  --color-bg: #0d0f11;
+  --color-surface-1: #121417;
+  --color-surface-2: #16191d;
+  --color-surface-3: #1d2025;
+  --color-surface-hover: #23272c;
+
+  --color-text-1: #e9eaec;
+  --color-text-2: #9ca2ab;
+  --color-text-3: #676e79;
+  --color-text-on-accent: #14171b;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-strong: rgba(255, 255, 255, 0.10);
+
+  --color-hero-300: #0df0fa;
+  --color-hero-400: #01ced8;
+  --color-hero-500: #00adb5;
+  --color-hero-600: #008187;
+  --color-hero-700: #005559;
+  --color-hero-deep: #001314;
+  --color-hero-soft: rgba(0, 173, 181, 0.14);
+
+  --color-highlight-300: #ef2d85;
+  --color-highlight-400: #e00e6d;
+  --color-highlight-500: #c90b61;
+  --color-highlight-600: #9d0449;
+  --color-highlight-soft: rgba(201, 11, 97, 0.16);
+
+  --color-danger: #e5707b;
+  --color-info: #23bec5;
+
+  --color-glass-bg: rgba(18, 20, 23, 0.55);
+  --color-glass-rim: rgba(255, 255, 255, 0.08);
+  --color-shadow-cast: rgba(0, 0, 0, 0.55);
+  --color-shadow-lift: rgba(255, 255, 255, 0.02);
+
+  --ease-out2: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 180ms;
+  --dur-base: 240ms;
+  --dur-medium: 320ms;
+}
+
+.light {
+  --color-bg: #f0f2f5;
+  --color-surface-1: #f6f7f9;
+  --color-surface-2: #fbfbfc;
+  --color-surface-3: #ffffff;
+  --color-surface-hover: #eaedf0;
+
+  --color-text-1: #17191c;
+  --color-text-2: #4b5058;
+  --color-text-3: #7d838c;
+  --color-text-on-accent: #14171b;
+
+  --color-border-subtle: rgba(14, 20, 19, 0.06);
+  --color-border-strong: rgba(14, 20, 19, 0.12);
+
+  --color-danger: #c25a64;
+
+  --color-glass-bg: rgba(255, 255, 255, 0.55);
+  --color-glass-rim: rgba(14, 20, 19, 0.08);
+  --color-shadow-cast: rgba(140, 150, 148, 0.30);
+  --color-shadow-lift: rgba(255, 255, 255, 0.85);
+}
+
 @layer base {
   body {
     @apply bg-paper text-ink font-body antialiased;
+    transition: background-color var(--dur-base) ease, color var(--dur-base) ease;
   }
   ::selection {
     @apply bg-accent-soft;
   }
+  :focus-visible {
+    outline: 2px solid var(--color-hero-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
-@layer utilities {
+/* ============================================================
+   COMPONENT CLASSES — buttons, cards, badges, inputs, switches,
+   toasts/modals, and glass (rationed to header/modal/toast/hero-CTA).
+   These are the shared building blocks; prefer them over one-off
+   Tailwind utility soup so the shadow/radius/motion discipline holds
+   across the app.
+   ============================================================ */
+@layer components {
+  /* Glass is a spice, not a coat of paint — exactly four places:
+     the header once scrolled, modals, toasts, a hero floating CTA.
+     Everywhere else that used to be "glass" is now .card (solid,
+     extruded), which is why .glass no longer appears on plain content
+     blocks throughout the app. */
   .glass {
-    background: rgba(23, 27, 23, 0.55);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: theme("boxShadow.glass-rim");
+  }
+
+  .card {
+    @apply bg-surface-2 shadow-extrude-md rounded-xl2;
+  }
+  .card-interactive {
+    @apply card transition;
+    transition-timing-function: var(--ease-out2);
+    transition-duration: var(--dur-fast);
+  }
+  .card-interactive:hover {
+    @apply shadow-extrude-lg;
+    transform: translateY(-2px);
+  }
+  .card-interactive:active {
+    @apply shadow-inset-sm;
+    transform: translateY(0);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl2 font-semibold whitespace-nowrap transition;
+    transition-timing-function: var(--ease-out2);
+    transition-duration: var(--dur-fast);
+  }
+  .btn-sm {
+    @apply h-9 px-4 text-sm;
+  }
+  .btn-md {
+    @apply h-11 px-5 text-base;
+  }
+  .btn-lg {
+    @apply h-14 px-7 text-lg;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-ontext shadow-extrude-sm;
+  }
+  .btn-primary:hover {
+    @apply bg-accent-400 shadow-extrude-md;
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    @apply bg-accent-600 shadow-inset-sm;
+    transform: translateY(0);
+  }
+  .btn-ghost {
+    @apply bg-transparent text-ink shadow-flat;
+  }
+  .btn-ghost:hover {
+    @apply bg-surface-2 shadow-extrude-sm;
+  }
+  .btn-subtle {
+    @apply bg-surface-2 text-ink shadow-flat;
+  }
+  .btn-subtle:hover {
+    @apply bg-surface-hover shadow-extrude-sm;
+  }
+  .btn-destructive {
+    @apply bg-danger text-white shadow-extrude-sm;
+  }
+  .btn-destructive:hover {
+    filter: brightness(1.05);
+    @apply shadow-extrude-md;
+    transform: translateY(-1px);
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-55;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full bg-surface-3 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-ink-muted shadow-flat;
+  }
+  .badge-accent {
+    background: color-mix(in srgb, var(--color-hero-500) 18%, var(--color-surface-3));
+    @apply text-accent-400;
+  }
+  .badge-highlight {
+    background: color-mix(in srgb, var(--color-highlight-500) 20%, var(--color-surface-3));
+    @apply text-accent2-400;
+  }
+  .badge-danger {
+    background: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface-3));
+    @apply text-danger;
+  }
+
+  .input2 {
+    @apply h-11 w-full rounded-xl2 border-0 bg-surface px-4 text-base text-ink shadow-inset-sm outline-none transition;
+    transition-timing-function: var(--ease-out2);
+    transition-duration: var(--dur-fast);
+  }
+  .input2::placeholder {
+    @apply text-ink-faint;
+  }
+  .input2:focus {
+    box-shadow: theme("boxShadow.inset-md"), 0 0 0 2px var(--color-hero-500);
+  }
+  .input2-invalid {
+    box-shadow: theme("boxShadow.inset-sm"), 0 0 0 1px var(--color-danger);
   }
 }
 
@@ -47,4 +235,13 @@
 }
 .legal-content code {
   @apply font-mono text-xs text-ink;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
