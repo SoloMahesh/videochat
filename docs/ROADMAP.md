@@ -2,7 +2,7 @@
 
 Sequenced so each phase ships something testable end-to-end, per the instruction to work "one task at a time" and verify as we go. See `docs/PRD.md` and `docs/FSD.md` for the why/how behind each item.
 
-Status as of this build: **Phase 0, Phase 1, and Phase 2 are code-complete and verified against a real production build** (`next build` + the custom server run with `NODE_ENV=production`, not just `next dev`) — see the note below on why that distinction mattered. Nothing has been deployed to a real VPS or tested against a live Stripe account — those need your credentials/infra and are called out explicitly below.
+Status as of this build: **Phase 0, Phase 1, Phase 2, and Phase 4 are code-complete and verified against a real production build** (`next build` + the custom server run with `NODE_ENV=production`, not just `next dev`) — see the note below on why that distinction mattered. Nothing has been deployed to a real VPS or tested against a live Stripe account — those need your credentials/infra and are called out explicitly below, with the complete ordered checklist in `docs/GO_LIVE.md`.
 
 **A cross-check pass against `docs/PRD.md`'s own feature list** (prompted by "is everything actually done") found two MVP-tier items that had been skipped (Block, the panic key) and several V2 items not yet built (Safe Mode, profile editing, share buttons, friends/DM). All are now built and verified below. That same pass also surfaced a real bug, not a missing feature: `server.ts` (run directly by `tsx`) and Next's API routes (bundled separately by webpack) were two different in-memory instantiations of `src/lib/socket/server.ts`, so any API route calling `emitToUser`/`forceEndSessionForUser` — the DM live-push and, more importantly, the moderation "ban"-severity force-disconnect — was silently writing to a socket registry nobody was reading from. Confirmed this reproduced in an actual production build, not just `next dev`, then fixed it by moving that shared state onto `globalThis` (the same pattern already used for the Prisma client singleton) and re-verified both paths live in production mode afterward. Everything under "verified" below was re-run in production mode after that fix, not just the earlier dev-mode passes.
 
@@ -55,13 +55,22 @@ Status as of this build: **Phase 0, Phase 1, and Phase 2 are code-complete and v
 - [ ] Leaderboards (opt-in, nickname only)
 - [ ] Re-evaluate infra: split TURN relay onto its own box if bandwidth is the bottleneck (see `docs/FSD.md` §2)
 
-## Before public launch — do not skip (see README for the same list)
-- The NSFW classifier now runs a real trained model (`nsfwjs`) — no action needed here, but no classifier is perfect, so keep an eye on the manual report queue as a backstop
-- Replace the placeholder legal copy on `/terms`
+## Phase 4 — Production hardening (everything code-shaped that "100% ready" needed)
+- [x] Rate limiting on every write-ish endpoint (guest session, moderation scan, messages, referral claim, payments, profile edits, admin auth) and the `join_queue` socket event — in-memory, shared correctly across the tsx-loaded socket server and webpack-bundled API routes via the same `globalThis` pattern used for socket state
+- [x] Real Terms of Service (`/terms`) and Privacy Policy (`/privacy`) — launch-ready drafts with bracketed placeholders (`Fill` component) for the handful of facts only the operator knows (legal entity, jurisdiction, contact emails); still needs a lawyer's sign-off before real users see it, see `docs/GO_LIVE.md`
+- [x] Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) via `src/middleware.ts` — verified with a real Playwright pass across every page with zero CSP violations
+- [x] Automated encrypted database backups + a tested restore path (`scripts/backup-db.sh`, `scripts/restore-db.sh`, `docs/BACKUPS.md`) — verified end to end (backup → encrypt → decrypt → restore → row counts matched)
+- [x] SEO/social metadata (OpenGraph, Twitter card, `metadataBase` resolved from `APP_URL`, robots)
+- **Exit criteria**: nothing code-shaped left before launch — everything remaining needs the operator's own accounts, credentials, or judgment calls. See `docs/GO_LIVE.md` for the complete, ordered list.
+
+## Before public launch — do not skip (see `docs/GO_LIVE.md` for the full step-by-step version)
+- The NSFW classifier runs a real trained model (`nsfwjs`) — no action needed here, but no classifier is perfect, so keep an eye on the manual report queue as a backstop
+- Fill in the bracketed placeholders in `/terms` and `/privacy` and get a lawyer's review
 - Set up the NCMEC CyberTipline reporting process (`docs/FSD.md` §9)
 - Deploy to a real VPS, issue TLS, configure coturn with real credentials
 - Confirm an ad network will accept the app before wiring `AdSlot` to a real network
 - Set real Stripe keys and confirm a live checkout end to end
+- Set up nightly backups (`docs/BACKUPS.md`) before real user data accumulates
 
 ## Explicit non-goals until traction justifies them
 Native mobile apps, creator payouts, paid moderation API, AI translation/chat features, country filter, cosmetic gifting — see `docs/PRD.md` §10.
