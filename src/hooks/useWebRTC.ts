@@ -9,6 +9,7 @@ export type ReportReason = "NUDITY" | "HARASSMENT" | "MINOR_SUSPECTED" | "SPAM" 
 export type CallStatus = "idle" | "searching" | "connected" | "banned" | "error";
 export type ChatMessage = { from: "me" | "stranger"; text: string };
 export type ShareCard = { sharedTags: string[]; mode: ChatMode; durationSeconds: number; vibe: string };
+export type SafeModeState = { active: boolean; selfConsented: boolean; peerConsented: boolean };
 export type SearchOptions = { mode: ChatMode; interestTags: string[]; language?: string; desiredGender?: GenderFilter };
 
 function buildIceServers(): RTCIceServer[] {
@@ -34,6 +35,7 @@ export function useWebRTC() {
   const [rematch, setRematch] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
   const [cardOffer, setCardOffer] = useState<{ sessionId: string; requestedByMe: boolean } | null>(null);
   const [shareCard, setShareCard] = useState<ShareCard | null>(null);
+  const [safeMode, setSafeMode] = useState<SafeModeState | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -160,6 +162,7 @@ export function useWebRTC() {
     clearRematchTimer();
     setRematch(null);
     setCardOffer(null);
+    setSafeMode(null);
     setStatus("idle");
   }, [teardownPeer, stopLocalMedia, clearRematchTimer]);
 
@@ -181,6 +184,11 @@ export function useWebRTC() {
 
   const dismissShareCard = useCallback(() => setShareCard(null), []);
 
+  const consentSafeMode = useCallback(() => {
+    if (!sessionIdRef.current) return;
+    socketRef.current.emit("safe_mode_consent", { sessionId: sessionIdRef.current });
+  }, []);
+
   const sendMessage = useCallback((text: string) => {
     if (!sessionIdRef.current || !text.trim()) return;
     socketRef.current.emit("chat_message", { sessionId: sessionIdRef.current, text });
@@ -190,13 +198,14 @@ export function useWebRTC() {
   useEffect(() => {
     const socket = socketRef.current;
 
-    async function onMatched(data: { sessionId: string; isInitiator: boolean; sharedTags: string[] }) {
+    async function onMatched(data: { sessionId: string; isInitiator: boolean; sharedTags: string[]; safeMode: boolean }) {
       sessionIdRef.current = data.sessionId;
       setSharedTags(data.sharedTags);
       setStatus("connected");
       clearRematchTimer();
       setRematch(null);
       setCardOffer(null);
+      setSafeMode(data.safeMode ? { active: true, selfConsented: false, peerConsented: false } : null);
 
       const pc = createPeerConnection(data.sessionId, lastOptsRef.current.mode);
       if (data.isInitiator) {
@@ -255,6 +264,11 @@ export function useWebRTC() {
       setWarning("Not enough coins for that gender filter — searching without it this time.");
     }
 
+    function onSafeModeStatus(data: { sessionId: string; selfConsented: boolean; peerConsented: boolean; cleared: boolean }) {
+      if (data.sessionId !== sessionIdRef.current) return;
+      setSafeMode(data.cleared ? null : { active: true, selfConsented: data.selfConsented, peerConsented: data.peerConsented });
+    }
+
     function onConnectError() {
       setStatus("error");
     }
@@ -266,6 +280,7 @@ export function useWebRTC() {
     socket.on("moderation_flag", onModerationFlag);
     socket.on("share_card_ready", onShareCardReady);
     socket.on("filter_downgraded", onFilterDowngraded);
+    socket.on("safe_mode_status", onSafeModeStatus);
     socket.on("connect_error", onConnectError);
 
     return () => {
@@ -276,6 +291,7 @@ export function useWebRTC() {
       socket.off("moderation_flag", onModerationFlag);
       socket.off("share_card_ready", onShareCardReady);
       socket.off("filter_downgraded", onFilterDowngraded);
+      socket.off("safe_mode_status", onSafeModeStatus);
       socket.off("connect_error", onConnectError);
     };
   }, [createPeerConnection, requeue, teardownPeer, stopLocalMedia, clearRematchTimer]);
@@ -310,6 +326,8 @@ export function useWebRTC() {
     shareCard,
     requestShareCard,
     dismissShareCard,
+    safeMode,
+    consentSafeMode,
     sessionId: sessionIdRef.current,
   };
 }

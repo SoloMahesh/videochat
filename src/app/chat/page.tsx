@@ -208,9 +208,35 @@ export default function ChatPage() {
             <div className="grid gap-4 sm:grid-cols-[2fr,1fr]">
               <div className="relative aspect-video overflow-hidden rounded-xl2 border border-line bg-surface-2">
                 {mode === "VIDEO" ? (
-                  <video ref={rtc.remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
+                  <video
+                    ref={rtc.remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className={`h-full w-full object-cover transition-[filter] duration-500 ${
+                      rtc.safeMode?.active ? "blur-2xl" : ""
+                    }`}
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center font-mono text-xs text-ink-muted">text mode</div>
+                )}
+                {rtc.safeMode?.active && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-paper/40 px-6 text-center">
+                    <p className="font-mono text-[11px] uppercase tracking-wide text-ink">Safe Mode</p>
+                    <p className="max-w-xs text-sm text-ink">
+                      One of you is new here, so video stays blurred until you both feel comfortable.
+                    </p>
+                    <button
+                      onClick={rtc.consentSafeMode}
+                      disabled={rtc.safeMode.selfConsented}
+                      className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {rtc.safeMode.selfConsented
+                        ? rtc.safeMode.peerConsented
+                          ? "Clearing…"
+                          : "Waiting for them…"
+                        : "I'm comfortable"}
+                    </button>
+                  </div>
                 )}
                 {mode === "VIDEO" && (
                   <video

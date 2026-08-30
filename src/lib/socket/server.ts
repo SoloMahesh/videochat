@@ -7,9 +7,12 @@ import { claimMatch, enqueue, removeBySocket, type SessionMode, type Gender, typ
 import { resolveGenderFilter } from "@/lib/matchmaking/genderFilter";
 import { maybeRewardReferral } from "@/lib/referral";
 import { getBlockedUserIds, createBlock } from "@/lib/block";
+import { isNewAndFree } from "@/lib/safeMode";
 import { randomUUID } from "node:crypto";
 
 type Peer = { socketId: string; userId: string };
+
+type SafeModeState = { active: boolean; aConsent: boolean; bConsent: boolean };
 
 type ActiveSession = {
   id: string;
@@ -18,6 +21,7 @@ type ActiveSession = {
   b: Peer;
   interestTagsMatched: string[];
   startedAt: number;
+  safeMode: SafeModeState;
 };
 
 /** Opened by endSession whenever a session ends by skip/disconnect (PRD
@@ -91,7 +95,15 @@ async function createMatchedSession(
   sharedTags: string[],
 ): Promise<string> {
   const sessionId = randomUUID();
-  sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags, startedAt: Date.now() });
+
+  let safeModeActive = false;
+  if (mode === "VIDEO") {
+    const [aNew, bNew] = await Promise.all([isNewAndFree(a.userId), isNewAndFree(b.userId)]);
+    safeModeActive = aNew || bNew;
+  }
+  const safeMode: SafeModeState = { active: safeModeActive, aConsent: false, bConsent: false };
+
+  sessions.set(sessionId, { id: sessionId, mode, a, b, interestTagsMatched: sharedTags, startedAt: Date.now(), safeMode });
   sessionBySocket.set(a.socketId, sessionId);
   sessionBySocket.set(b.socketId, sessionId);
 
@@ -99,8 +111,8 @@ async function createMatchedSession(
     data: { id: sessionId, userAId: a.userId, userBId: b.userId, mode, interestTagsMatched: sharedTags },
   });
 
-  io.to(a.socketId).emit("matched", { sessionId, isInitiator: true, sharedTags });
-  io.to(b.socketId).emit("matched", { sessionId, isInitiator: false, sharedTags });
+  io.to(a.socketId).emit("matched", { sessionId, isInitiator: true, sharedTags, safeMode: safeModeActive });
+  io.to(b.socketId).emit("matched", { sessionId, isInitiator: false, sharedTags, safeMode: safeModeActive });
   return sessionId;
 }
 
@@ -294,6 +306,32 @@ export function registerSocketServer(io: Server) {
 
       await createBlock(userId, peer.userId);
       await endSession(io, payload.sessionId, "block");
+    });
+
+    socket.on("safe_mode_consent", (payload: { sessionId: string }) => {
+      const session = sessions.get(payload.sessionId);
+      if (!session || !session.safeMode.active) return;
+
+      const isA = session.a.socketId === socket.id;
+      if (!isA && session.b.socketId !== socket.id) return;
+      if (isA) session.safeMode.aConsent = true;
+      else session.safeMode.bConsent = true;
+
+      const bothConsented = session.safeMode.aConsent && session.safeMode.bConsent;
+      if (bothConsented) session.safeMode.active = false;
+
+      io.to(session.a.socketId).emit("safe_mode_status", {
+        sessionId: payload.sessionId,
+        selfConsented: session.safeMode.aConsent,
+        peerConsented: session.safeMode.bConsent,
+        cleared: bothConsented,
+      });
+      io.to(session.b.socketId).emit("safe_mode_status", {
+        sessionId: payload.sessionId,
+        selfConsented: session.safeMode.bConsent,
+        peerConsented: session.safeMode.aConsent,
+        cleared: bothConsented,
+      });
     });
 
     socket.on(
