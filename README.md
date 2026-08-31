@@ -58,3 +58,10 @@ See `docs/GO_LIVE.md` for the complete, ordered checklist of everything above pl
 - `docker-compose.yml`, `docker/` — app + Postgres + Redis + coturn + nginx for the VPS deploy
 - `scripts/` — backup/restore scripts (`docs/BACKUPS.md`)
 - `legacy/` — the original static prototype this repo started from, kept for reference only
+
+## License
+
+Proprietary — all rights reserved. This is not open-source software;
+being able to read this repository does not grant permission to use,
+copy, modify, or deploy it. See `LICENSE` for the full terms and how
+to request a commercial license.
